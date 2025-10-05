@@ -33,6 +33,17 @@ def test_settings():
 def app(test_settings):
     """Create FastAPI app instance for testing."""
     with patch("app.core.config.settings", test_settings):
+        # Import database functions after patching settings
+        from app.core.database import create_tables, drop_tables
+
+        # Create fresh database tables for testing
+        try:
+            drop_tables()
+        except Exception:
+            pass  # Tables might not exist yet
+
+        create_tables()
+
         return create_app()
 
 

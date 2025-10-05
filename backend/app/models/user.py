@@ -2,10 +2,10 @@
 User model for authentication and user management.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, String, Text
+from sqlalchemy import Boolean, Date, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -66,6 +66,34 @@ class User(Base):
     )
     bio: Mapped[Optional[str]] = mapped_column(
         Text, nullable=True, comment="User biography or description"
+    )
+
+    # Life management profile fields
+    date_of_birth: Mapped[Optional[date]] = mapped_column(
+        Date, nullable=True, comment="User's date of birth for life calculations"
+    )
+    lifespan: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True, comment="Expected lifespan in years (default: 80)"
+    )
+    theme: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        default="light",
+        comment="UI theme preference (light/dark)",
+    )
+    font_size: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True, default=14, comment="UI font size preference"
+    )
+
+    # Soft delete functionality
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+        comment="Soft delete flag for user account",
+    )
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        nullable=True, comment="Timestamp when user was soft deleted"
     )
 
     # Account timestamps

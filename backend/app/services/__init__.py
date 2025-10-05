@@ -4,6 +4,7 @@ Services package for LifeTime AI application.
 Contains business logic and service layer implementations.
 """
 
+from .user import UserService
 from .week_calculation import (
     FutureDateError,
     InvalidDateError,
@@ -17,6 +18,9 @@ from .week_calculation import (
 )
 
 __all__ = [
+    # User service
+    "UserService",
+    # Week calculation services
     "WeekCalculationService",
     "WeekType",
     "WeekCalculationError",

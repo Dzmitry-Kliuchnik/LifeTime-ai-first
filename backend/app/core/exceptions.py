@@ -55,6 +55,23 @@ class NotFoundException(LifeTimeException):
         )
 
 
+class ConflictException(LifeTimeException):
+    """Exception for conflict errors (e.g., duplicate resources)."""
+
+    def __init__(self, message: str, detail: Any = None):
+        super().__init__(
+            message=message,
+            status_code=409,  # HTTP_409_CONFLICT
+            detail=detail,
+        )
+
+
+# Aliases for consistency with service layer
+NotFoundError = NotFoundException
+ValidationError = ValidationException
+ConflictError = ConflictException
+
+
 def add_exception_handlers(app: FastAPI) -> None:
     """
     Add custom exception handlers to the FastAPI application.
