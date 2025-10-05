@@ -33,6 +33,19 @@ class Settings(BaseSettings):
     database_echo: bool = Field(
         default=False, description="Echo SQL queries to console"
     )
+    database_encrypt: bool = Field(
+        default=False, description="Enable database encryption with SQLCipher"
+    )
+    database_key: str = Field(
+        default="your-database-encryption-key-change-in-production",
+        description="Database encryption key for SQLCipher",
+    )
+    database_pool_size: int = Field(
+        default=10, description="Database connection pool size"
+    )
+    database_max_overflow: int = Field(
+        default=20, description="Database connection pool max overflow"
+    )
 
     # CORS settings
     cors_origins: list[str] = Field(

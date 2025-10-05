@@ -21,8 +21,29 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     setup_logging()
+    startup_database()
     yield
     # Shutdown - placeholder for cleanup tasks
+
+
+def startup_database():
+    """Initialize database connection and verify setup."""
+    import logging
+
+    from app.core.database import get_database_info, verify_database_connection
+
+    logger = logging.getLogger(__name__)
+
+    # Verify database connection
+    if verify_database_connection():
+        logger.info("Database connection verified successfully")
+
+        # Log database configuration
+        db_info = get_database_info()
+        logger.info(f"Database configuration: {db_info}")
+    else:
+        logger.error("Database connection failed during startup")
+        raise RuntimeError("Database connection failed")
 
 
 def create_app() -> FastAPI:
@@ -68,10 +89,16 @@ def create_app() -> FastAPI:
     @app.get("/health", tags=["health"])
     async def health_check():
         """Health check endpoint."""
+        from app.core.database import verify_database_connection
+
+        db_healthy = verify_database_connection()
+        overall_status = "healthy" if db_healthy else "unhealthy"
+
         return {
-            "status": "healthy",
+            "status": overall_status,
             "service": settings.app_name,
             "version": settings.app_version,
+            "database": "healthy" if db_healthy else "unhealthy",
         }
 
     return app

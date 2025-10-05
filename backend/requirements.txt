@@ -6,6 +6,9 @@ python-multipart==0.0.6
 # Database and ORM
 sqlalchemy==2.0.23
 alembic==1.12.1
+cryptography==41.0.7
+# Optional: For SQLCipher encryption support (requires SQLCipher libraries)
+# pysqlcipher3==1.2.0
 
 # Data validation and serialization
 pydantic==2.5.0
