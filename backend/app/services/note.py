@@ -457,22 +457,28 @@ class NoteService:
         )
 
     def get_paginated_notes(
-        self, user_id: int, page: int = 1, size: int = 20, include_deleted: bool = False
+        self,
+        user_id: int,
+        page: int = 1,
+        size: int = 20,
+        include_deleted: bool = False,
+        week_index: Optional[int] = None,
     ) -> NoteListResponse:
         """
-        Get paginated notes for a user.
+        Get paginated notes for a user with optional week filtering.
 
         Args:
             user_id: ID of the note owner
             page: Page number (1-based)
             size: Number of items per page
             include_deleted: Whether to include soft-deleted notes
+            week_index: Optional filter by specific week index (0-based week since birth)
 
         Returns:
             Paginated note list response
         """
         notes, total_count = self.repository.get_paginated(
-            user_id, page, size, include_deleted
+            user_id, page, size, include_deleted, week_index
         )
         note_responses = [NoteResponse.model_validate(note) for note in notes]
 

@@ -559,20 +559,7 @@ class TestUserService:
 class TestUserAPI:
     """Test User API endpoints."""
 
-    @pytest.fixture
-    def test_engine(self):
-        """Create a test database engine."""
-        engine = create_engine("sqlite:///:memory:", echo=False)
-        Base.metadata.create_all(engine)
-        return engine
-
-    @pytest.fixture
-    def test_session(self, test_engine):
-        """Create a test database session."""
-        session_class = sessionmaker(bind=test_engine)
-        session = session_class()
-        yield session
-        session.close()
+    # Using test fixtures from conftest.py
 
     def test_create_user_endpoint(self, client):
         """Test user creation endpoint."""

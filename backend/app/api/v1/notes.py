@@ -3,7 +3,7 @@ REST API endpoints for note management with week-based organization.
 """
 
 import logging
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -39,7 +39,7 @@ async def create_note(
     note_service: NoteService = Depends(get_note_service),
 ):
     """
-    Create a new note.
+    Create a new note with proper validation and future week prevention.
 
     Args:
         note_data: Note creation data
@@ -52,6 +52,10 @@ async def create_note(
     Raises:
         HTTP 404: If user not found
         HTTP 422: If validation fails (e.g., future week notes)
+
+    Note:
+        TODO: Replace user_id query parameter with proper JWT/session-based authentication
+        for better security and authorization control.
     """
     try:
         return note_service.create_note(user_id, note_data)
@@ -78,7 +82,7 @@ async def get_note(
     note_service: NoteService = Depends(get_note_service),
 ):
     """
-    Get a note by ID.
+    Get a note by ID with proper ownership validation.
 
     Args:
         note_id: Note ID
@@ -89,7 +93,11 @@ async def get_note(
         Note response
 
     Raises:
-        HTTP 404: If note not found
+        HTTP 404: If note not found or user doesn't own the note
+
+    Note:
+        TODO: Replace user_id query parameter with proper JWT/session-based authentication
+        for better security and authorization control.
     """
     try:
         return note_service.get_note(user_id, note_id)
@@ -112,7 +120,7 @@ async def update_note(
     note_service: NoteService = Depends(get_note_service),
 ):
     """
-    Update an existing note.
+    Update an existing note with proper ownership validation.
 
     Args:
         note_id: Note ID
@@ -124,8 +132,12 @@ async def update_note(
         Updated note response
 
     Raises:
-        HTTP 404: If note not found
-        HTTP 422: If validation fails
+        HTTP 404: If note not found or user doesn't own the note
+        HTTP 422: If validation fails (e.g., future week notes)
+
+    Note:
+        TODO: Replace user_id query parameter with proper JWT/session-based authentication
+        for better security and authorization control.
     """
     try:
         return note_service.update_note(user_id, note_id, note_data)
@@ -152,7 +164,7 @@ async def delete_note(
     note_service: NoteService = Depends(get_note_service),
 ):
     """
-    Soft delete a note.
+    Soft delete a note with proper ownership validation.
 
     Args:
         note_id: Note ID
@@ -160,7 +172,11 @@ async def delete_note(
         note_service: Note service instance
 
     Raises:
-        HTTP 404: If note not found
+        HTTP 404: If note not found or user doesn't own the note
+
+    Note:
+        TODO: Replace user_id query parameter with proper JWT/session-based authentication
+        for better security and authorization control.
     """
     try:
         note_service.delete_note(user_id, note_id)
@@ -213,24 +229,34 @@ async def get_notes(
     user_id: int = Query(..., description="ID of the note owner"),
     page: int = Query(1, ge=1, description="Page number (1-based)"),
     size: int = Query(20, ge=1, le=100, description="Number of items per page"),
+    week_index: Optional[int] = Query(
+        None, ge=0, description="Filter by specific week index"
+    ),
     include_deleted: bool = Query(False, description="Include soft-deleted notes"),
     note_service: NoteService = Depends(get_note_service),
 ):
     """
-    Get paginated notes for a user.
+    Get paginated notes for a user with optional filtering.
 
     Args:
         user_id: ID of the note owner
         page: Page number (1-based)
         size: Number of items per page
+        week_index: Optional filter by specific week index (0-based week since birth)
         include_deleted: Include soft-deleted notes
         note_service: Note service instance
 
     Returns:
         Paginated note list response
+
+    Note:
+        TODO: Replace user_id query parameter with proper JWT/session-based authentication
+        for better security and authorization control.
     """
     try:
-        return note_service.get_paginated_notes(user_id, page, size, include_deleted)
+        return note_service.get_paginated_notes(
+            user_id, page, size, include_deleted, week_index
+        )
     except Exception as e:
         logger.error(f"Unexpected error retrieving notes: {e}")
         raise HTTPException(

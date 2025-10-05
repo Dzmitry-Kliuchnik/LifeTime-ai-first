@@ -525,24 +525,7 @@ class TestNoteService:
 class TestNoteAPI:
     """Test Note API endpoints."""
 
-    @pytest.fixture
-    def test_user(self, client):
-        """Create a test user using the existing database from conftest."""
-        from app.core.database import get_db
-
-        # Get the database session from the existing setup
-        db = next(get_db())
-
-        user = User(
-            username="apiuser",
-            email="api@example.com",
-            hashed_password="hashed_password_here",
-            date_of_birth=date(1990, 1, 1),
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        return user
+    # Using test_user fixture from conftest.py
 
     def test_create_note_endpoint(self, client, test_user):
         """Test note creation via API."""

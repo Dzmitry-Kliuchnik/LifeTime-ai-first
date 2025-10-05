@@ -229,15 +229,17 @@ class NoteRepository:
         page: int = 1,
         size: int = 20,
         include_deleted: bool = False,
+        week_number: Optional[int] = None,
     ) -> Tuple[List[Note], int]:
         """
-        Get paginated notes for a user.
+        Get paginated notes for a user with optional week filtering.
 
         Args:
             owner_id: Owner user ID
             page: Page number (1-based)
             size: Number of items per page
             include_deleted: Whether to include soft-deleted notes
+            week_number: Optional filter by specific week number (0-based week since birth)
 
         Returns:
             Tuple of (notes list, total count)
@@ -246,6 +248,9 @@ class NoteRepository:
 
         if not include_deleted:
             query = query.filter(Note.is_deleted == False)
+
+        if week_number is not None:
+            query = query.filter(Note.week_number == week_number)
 
         total_count = query.count()
 
