@@ -270,25 +270,42 @@ class WeekCalculationService:
     @staticmethod
     def _is_birthday_week(dob: date, week_start: date, week_end: date) -> bool:
         """Check if the week contains a birthday anniversary."""
-        for _ in range(1, 200):  # Check up to 200 years
+        # Check if birthday anniversary falls within this week
+        # First, check the year of the week start
+        try:
             anniversary = date(week_start.year, dob.month, dob.day)
-            if anniversary < week_start:
-                continue
             if week_start <= anniversary <= week_end:
                 return True
-            if anniversary > week_end:
-                break
+        except ValueError:
+            # Handle leap year edge case (Feb 29 on non-leap year)
+            pass
+
+        # If week spans across years, also check the end year
+        if week_start.year != week_end.year:
+            try:
+                anniversary = date(week_end.year, dob.month, dob.day)
+                if week_start <= anniversary <= week_end:
+                    return True
+            except ValueError:
+                # Handle leap year edge case (Feb 29 on non-leap year)
+                pass
+
         return False
 
     @staticmethod
     def _is_year_start_week(week_start: date, week_end: date) -> bool:
         """Check if the week contains January 1st."""
+        # Check if January 1st of the week_start year falls within this week
         jan_1 = date(week_start.year, 1, 1)
         if week_start <= jan_1 <= week_end:
             return True
-        # Check if year boundary is crossed
+
+        # If week spans across years, check January 1st of the end year
         if week_start.year != week_end.year:
-            return True
+            jan_1_end_year = date(week_end.year, 1, 1)
+            if week_start <= jan_1_end_year <= week_end:
+                return True
+
         return False
 
     @staticmethod
