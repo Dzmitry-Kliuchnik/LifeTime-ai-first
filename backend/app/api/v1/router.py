@@ -4,6 +4,7 @@ API v1 router configuration.
 
 from fastapi import APIRouter
 
+from .notes import note_router
 from .users import user_router
 from .week_calculation import week_router
 
@@ -15,6 +16,9 @@ api_router.include_router(user_router)
 
 # Include week calculation routes
 api_router.include_router(week_router)
+
+# Include note routes
+api_router.include_router(note_router)
 
 
 # Health endpoint for API
