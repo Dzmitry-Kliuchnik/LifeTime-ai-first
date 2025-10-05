@@ -9,6 +9,11 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.rate_limiting import (
+    user_auth_rate_limit,
+    user_read_rate_limit,
+    user_write_rate_limit,
+)
 from app.schemas.user import (
     PasswordChange,
     UserCreate,
@@ -21,6 +26,9 @@ from app.services.user import UserService
 
 # Create router for user endpoints
 user_router = APIRouter(prefix="/users", tags=["users"])
+
+# Constants for error messages
+INVALID_USER_ID_MSG = "User ID must be a positive integer"
 
 
 @user_router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -91,6 +99,7 @@ async def get_users(
 
 
 @user_router.get("/{user_id}", response_model=UserResponse)
+@user_read_rate_limit()
 async def get_user(
     user_id: int,
     include_deleted: bool = Query(False, description="Include soft-deleted user"),
@@ -108,8 +117,16 @@ async def get_user(
         User information
 
     Raises:
+        400: Invalid user ID (non-positive integer)
         404: User not found
     """
+    # Validate user_id
+    if user_id <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=INVALID_USER_ID_MSG,
+        )
+
     user = UserService.get_user(db, user_id, include_deleted=include_deleted)
     if not user:
         raise HTTPException(
@@ -183,7 +200,51 @@ async def update_user(
         )
 
 
+@user_router.patch("/{user_id}", response_model=UserResponse)
+@user_write_rate_limit()
+async def patch_user(
+    user_id: int, user_data: UserUpdate, db: Session = Depends(get_db)
+) -> UserResponse:
+    """
+    Partially update user information using PATCH method.
+    Only provided fields will be updated, null/undefined fields are ignored.
+
+    Args:
+        user_id: User ID to update
+        user_data: Partial user data to update
+        db: Database session
+
+    Returns:
+        Updated user information
+
+    Raises:
+        400: Invalid user ID (non-positive integer)
+        404: User not found
+        409: Username or email already exists
+        422: Validation error
+    """
+    # Validate user_id
+    if user_id <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=INVALID_USER_ID_MSG,
+        )
+
+    try:
+        user = UserService.update_user(db, user_id, user_data)
+        return UserResponse.model_validate(user)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ConflictError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
+        )
+
+
 @user_router.patch("/{user_id}/profile", response_model=UserResponse)
+@user_write_rate_limit()
 async def update_user_profile(
     user_id: int, profile_data: UserProfileUpdate, db: Session = Depends(get_db)
 ) -> UserResponse:
@@ -199,9 +260,17 @@ async def update_user_profile(
         Updated user information
 
     Raises:
+        400: Invalid user ID (non-positive integer)
         404: User not found
         422: Validation error
     """
+    # Validate user_id
+    if user_id <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=INVALID_USER_ID_MSG,
+        )
+
     try:
         user = UserService.update_user_profile(db, user_id, profile_data)
         return UserResponse.model_validate(user)
@@ -214,6 +283,7 @@ async def update_user_profile(
 
 
 @user_router.post("/{user_id}/change-password", status_code=status.HTTP_204_NO_CONTENT)
+@user_auth_rate_limit()
 async def change_password(
     user_id: int, password_data: PasswordChange, db: Session = Depends(get_db)
 ) -> None:

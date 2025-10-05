@@ -718,3 +718,234 @@ class TestUserAPI:
         assert "inactive_users" in stats
         assert "deleted_users" in stats
         assert isinstance(stats["total_users"], int)
+
+    # New tests for PATCH endpoint and enhanced validation
+    def test_patch_user_endpoint(self, client):
+        """Test PATCH user endpoint for partial updates."""
+        # Create a user
+        user_data = {
+            "username": "patchuser",
+            "email": "patchuser@example.com",
+            "password": "SecurePass123",
+            "full_name": "Original Name",
+            "theme": "light",
+            "font_size": 14,
+        }
+
+        create_response = client.post("/api/v1/users/", json=user_data)
+        created_user = create_response.json()
+        user_id = created_user["id"]
+
+        # Partial update using PATCH - only update full_name
+        patch_data = {"full_name": "Patched Name"}
+        response = client.patch(f"/api/v1/users/{user_id}", json=patch_data)
+        assert response.status_code == 200
+
+        updated_user = response.json()
+        assert updated_user["full_name"] == "Patched Name"
+        assert updated_user["theme"] == "light"  # Should remain unchanged
+        assert updated_user["username"] == "patchuser"  # Should remain unchanged
+
+    def test_patch_user_multiple_fields(self, client):
+        """Test PATCH user endpoint with multiple fields."""
+        # Create a user
+        user_data = {
+            "username": "multiuser",
+            "email": "multiuser@example.com",
+            "password": "SecurePass123",
+        }
+
+        create_response = client.post("/api/v1/users/", json=user_data)
+        created_user = create_response.json()
+        user_id = created_user["id"]
+
+        # Update multiple fields
+        patch_data = {
+            "full_name": "Multi Update User",
+            "theme": "dark",
+            "font_size": 16,
+            "bio": "Updated bio for multi user",
+        }
+        response = client.patch(f"/api/v1/users/{user_id}", json=patch_data)
+        assert response.status_code == 200
+
+        updated_user = response.json()
+        assert updated_user["full_name"] == "Multi Update User"
+        assert updated_user["theme"] == "dark"
+        assert updated_user["font_size"] == 16
+        assert updated_user["bio"] == "Updated bio for multi user"
+
+    def test_patch_user_empty_update(self, client):
+        """Test PATCH user endpoint with empty update."""
+        # Create a user
+        user_data = {
+            "username": "emptyuser",
+            "email": "emptyuser@example.com",
+            "password": "SecurePass123",
+        }
+
+        create_response = client.post("/api/v1/users/", json=user_data)
+        created_user = create_response.json()
+        user_id = created_user["id"]
+
+        # Empty update
+        patch_data = {}
+        response = client.patch(f"/api/v1/users/{user_id}", json=patch_data)
+        assert response.status_code == 200
+
+        # User should remain unchanged
+        updated_user = response.json()
+        assert updated_user["username"] == "emptyuser"
+
+    def test_get_user_invalid_id(self, client):
+        """Test GET user with invalid ID (non-positive integer)."""
+        # Test with zero
+        response = client.get("/api/v1/users/0")
+        assert response.status_code == 400
+        error_data = response.json()
+        assert "User ID must be a positive integer" in error_data["error"]
+
+        # Test with negative number
+        response = client.get("/api/v1/users/-1")
+        assert response.status_code == 400
+        error_data = response.json()
+        assert "User ID must be a positive integer" in error_data["error"]
+
+    def test_patch_user_invalid_id(self, client):
+        """Test PATCH user with invalid ID."""
+        patch_data = {"full_name": "Test"}
+
+        response = client.patch("/api/v1/users/0", json=patch_data)
+        assert response.status_code == 400
+        error_data = response.json()
+        assert "User ID must be a positive integer" in error_data["error"]
+
+    def test_patch_user_not_found(self, client):
+        """Test PATCH non-existent user."""
+        patch_data = {"full_name": "Test"}
+
+        response = client.patch("/api/v1/users/999999", json=patch_data)
+        assert response.status_code == 404
+        error_data = response.json()
+        assert "not found" in error_data["error"].lower()
+
+    def test_patch_user_duplicate_username(self, client):
+        """Test PATCH user with duplicate username."""
+        # Create two users
+        user1_data = {
+            "username": "user1",
+            "email": "user1@example.com",
+            "password": "SecurePass123",
+        }
+        user2_data = {
+            "username": "user2",
+            "email": "user2@example.com",
+            "password": "SecurePass123",
+        }
+
+        response1 = client.post("/api/v1/users/", json=user1_data)
+        client.post("/api/v1/users/", json=user2_data)
+
+        user1_id = response1.json()["id"]
+
+        # Try to update user1 with user2's username
+        patch_data = {"username": "user2"}
+        response = client.patch(f"/api/v1/users/{user1_id}", json=patch_data)
+        assert response.status_code == 409
+        error_data = response.json()
+        assert "already exists" in error_data["error"].lower()
+
+    def test_patch_user_duplicate_email(self, client):
+        """Test PATCH user with duplicate email."""
+        # Create two users
+        user1_data = {
+            "username": "emailuser1",
+            "email": "email1@example.com",
+            "password": "SecurePass123",
+        }
+        user2_data = {
+            "username": "emailuser2",
+            "email": "email2@example.com",
+            "password": "SecurePass123",
+        }
+
+        response1 = client.post("/api/v1/users/", json=user1_data)
+        client.post("/api/v1/users/", json=user2_data)
+
+        user1_id = response1.json()["id"]
+
+        # Try to update user1 with user2's email
+        patch_data = {"email": "email2@example.com"}
+        response = client.patch(f"/api/v1/users/{user1_id}", json=patch_data)
+        assert response.status_code == 409
+        error_data = response.json()
+        assert "already exists" in error_data["error"].lower()
+
+    def test_patch_user_validation_errors(self, client):
+        """Test PATCH user with validation errors."""
+        # Create a user
+        user_data = {
+            "username": "validuser",
+            "email": "validuser@example.com",
+            "password": "SecurePass123",
+        }
+
+        response = client.post("/api/v1/users/", json=user_data)
+        user_id = response.json()["id"]
+
+        # Test invalid theme
+        patch_data = {"theme": "invalid_theme"}
+        response = client.patch(f"/api/v1/users/{user_id}", json=patch_data)
+        assert response.status_code == 422
+
+        # Test invalid font size (too small)
+        patch_data = {"font_size": 5}
+        response = client.patch(f"/api/v1/users/{user_id}", json=patch_data)
+        assert response.status_code == 422
+
+        # Test invalid font size (too large)
+        patch_data = {"font_size": 100}
+        response = client.patch(f"/api/v1/users/{user_id}", json=patch_data)
+        assert response.status_code == 422
+
+        # Test invalid email format
+        patch_data = {"email": "invalid-email"}
+        response = client.patch(f"/api/v1/users/{user_id}", json=patch_data)
+        assert response.status_code == 422
+
+    def test_user_profile_patch_endpoint(self, client):
+        """Test PATCH user profile endpoint."""
+        # Create a user
+        user_data = {
+            "username": "profileuser",
+            "email": "profileuser@example.com",
+            "password": "SecurePass123",
+        }
+
+        response = client.post("/api/v1/users/", json=user_data)
+        user_id = response.json()["id"]
+
+        # Update profile settings
+        profile_data = {
+            "date_of_birth": "1995-05-15",
+            "lifespan": 85,
+            "theme": "dark",
+            "font_size": 18,
+        }
+        response = client.patch(f"/api/v1/users/{user_id}/profile", json=profile_data)
+        assert response.status_code == 200
+
+        updated_user = response.json()
+        assert updated_user["date_of_birth"] == "1995-05-15"
+        assert updated_user["lifespan"] == 85
+        assert updated_user["theme"] == "dark"
+        assert updated_user["font_size"] == 18
+
+    def test_user_profile_patch_invalid_id(self, client):
+        """Test PATCH user profile with invalid ID."""
+        profile_data = {"theme": "dark"}
+
+        response = client.patch("/api/v1/users/0/profile", json=profile_data)
+        assert response.status_code == 400
+        error_data = response.json()
+        assert "User ID must be a positive integer" in error_data["error"]
