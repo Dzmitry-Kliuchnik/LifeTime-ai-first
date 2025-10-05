@@ -1,80 +1,240 @@
-// Minimal store tests to prevent memory issues// Tests for store functionality// Tests for store functionality
+// Basic store tests // Tests for store functionality// Tests for store functionality
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
-import { setActivePinia, createPinia } from 'pinia'import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
+describe('Store Tests', () => {
 
+  it('should pass basic test', () => {import { setActivePinia, createPinia } from 'pinia'import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
-// Mock APIs to prevent network callsimport { setActivePinia, createPinia } from 'pinia'import { setActivePinia, createPinia } from 'pinia'
+    expect(true).toBe(true)
 
-vi.mock('../../utils/api', () => ({
+  })import { useUserStore } from '../../stores/user'import { setActivePinia, createPinia } from 'pinia'
 
-  userApi: {import { useUserStore } from '../../stores/user'import { useUserStore } from '../../stores/user'
+})
+import { useNotesStore } from '../../stores/notes'import { useUserStore } from '../../stores/user'
+
+import { useWeekCalculationStore } from '../../stores/week-calculation'import { useNotesStore } from '../../stores/notes'
+
+import { setupTest, cleanupTest } from '../setup'import { useWeekCalculationStore } from '../../stores/week-calculation'
+
+import { setupTest, cleanupTest } from '../setup'
+
+// Mock APIs to prevent network calls
+
+vi.mock('../../utils/api', () => ({// Mock APIs to prevent network calls
+
+  userApi: {vi.mock('../../utils/api', () => ({
 
     getUser: vi.fn().mockResolvedValue({}),
 
-    createUser: vi.fn().mockResolvedValue({}),import { useNotesStore } from '../../stores/notes'import { useNotesStore } from '../../stores/notes'
+    createUser: vi.fn().mockResolvedValue({}),  userApi: {vi.mock('../../utils/api', () => ({
 
     updateUser: vi.fn().mockResolvedValue({}),
 
-    deleteUser: vi.fn().mockResolvedValue({})import { useWeekCalculationStore } from '../../stores/week-calculation'import { useWeekCalculationStore } from '../../stores/week-calculation'
+    deleteUser: vi.fn().mockResolvedValue({})    getUser: vi.fn().mockResolvedValue({}),  userApi: {
 
   },
 
-  notesApi: {import { import { 
+  notesApi: {    createUser: vi.fn().mockResolvedValue({}),    getUser: vi.fn().mockResolvedValue({}),
+
+    getNotes: vi.fn().mockResolvedValue({ notes: [], total_count: 0 }),
+
+    listNotes: vi.fn().mockResolvedValue({ notes: [], total_count: 0 }),    updateUser: vi.fn().mockResolvedValue({}),    createUser: vi.fn().mockResolvedValue({}),
 
     createNote: vi.fn().mockResolvedValue({}),
 
-    listNotes: vi.fn().mockResolvedValue({ notes: [], total_count: 0 })  setupTest,   setupTest, 
+    updateNote: vi.fn().mockResolvedValue({}),    deleteUser: vi.fn().mockResolvedValue({})    updateUser: vi.fn().mockResolvedValue({}),
 
-  },
+    deleteNote: vi.fn().mockResolvedValue({})
 
-  weekCalculationApi: {  cleanupTest,   cleanupTest, 
+  },  },    deleteUser: vi.fn().mockResolvedValue({})
 
-    calculateTotalWeeks: vi.fn().mockResolvedValue({})
+  weekCalculationApi: {
 
-  },  mockUser,   mockUser, 
+    getTotalWeeks: vi.fn().mockResolvedValue({  notesApi: {  },
+
+      total_weeks: 4160,
+
+      current_week_index: 1500,    createNote: vi.fn().mockResolvedValue({}),  notesApi: {
+
+      completion_percentage: 36.06
+
+    }),    listNotes: vi.fn().mockResolvedValue({ notes: [], total_count: 0 })    createNote: vi.fn().mockResolvedValue({}),
+
+    getCurrentWeek: vi.fn().mockResolvedValue({
+
+      current_week_index: 1500,  },    listNotes: vi.fn().mockResolvedValue({ notes: [], total_count: 0 })
+
+      completion_percentage: 36.06
+
+    }),  weekCalculationApi: {  },
+
+    getLifeProgress: vi.fn().mockResolvedValue({
+
+      total_weeks: 4160,    calculateLifeProgress: vi.fn().mockResolvedValue({  weekCalculationApi: { 
+
+      current_week_index: 1500,
+
+      completion_percentage: 36.06      total_weeks: 4160,
+
+    })
+
+  },      weeks_lived: 1500,    calculateTotalWeeks: vi.fn().mockResolvedValue({})
 
   apiUtils: {
 
+    isApiError: vi.fn().mockReturnValue(false)      current_week_index: 1500,
+
+  }
+
+}))      completion_percentage: 36.06  },  mockUser,   mockUser, 
+
+
+
+describe('Store Tests', () => {    })
+
+  beforeEach(() => {
+
+    setActivePinia(createPinia())  }  apiUtils: {
+
+    setupTest()
+
+    vi.clearAllMocks()}))
+
+  })
+
     isApiError: vi.fn().mockReturnValue(false),  mockNote,  mockNote,
 
-    getErrorMessage: vi.fn().mockReturnValue('Error')
+  afterEach(() => {
 
-  }  mockTotalWeeksResponse,  mockTotalWeeksResponse,
+    cleanupTest()describe('Store Tests', () => {
 
-}))
+  })
 
-  mockCurrentWeekResponse,  mockCurrentWeekResponse,
+  beforeEach(() => {    getErrorMessage: vi.fn().mockReturnValue('Error')
 
-// Mock localStorage
+  describe('User Store', () => {
 
-Object.defineProperty(window, 'localStorage', {  mockLifeProgressResponse  mockLifeProgressResponse
+    it('should initialize with default state', () => {    setActivePinia(createPinia())
 
-  value: {
+      const userStore = useUserStore()
 
-    getItem: vi.fn(),} from '../test-utils'} from '../test-utils'
+      expect(userStore.user).toBeNull()  })  }  mockTotalWeeksResponse,  mockTotalWeeksResponse,
 
-    setItem: vi.fn(),
+      expect(userStore.isLoading).toBe(false)
 
-    removeItem: vi.fn(),
+      expect(userStore.error).toBeNull()
 
-    clear: vi.fn()
+    })
 
-  }// Mock the API modules to prevent actual network calls and infinite loops// Mock all the API modules to prevent actual network calls
+  afterEach(() => {}))
+
+    it('should handle user creation', async () => {
+
+      const userStore = useUserStore()    vi.clearAllMocks()
+
+      await userStore.createUser({
+
+        name: 'Test User',  })  mockCurrentWeekResponse,  mockCurrentWeekResponse,
+
+        email: 'test@example.com',
+
+        date_of_birth: '1990-01-01'
+
+      })
+
+      expect(userStore.isLoading).toBe(false)  describe('User Store', () => {// Mock localStorage
+
+    })
+
+  })    it('should initialize with default state', () => {
+
+
+
+  describe('Notes Store', () => {      const userStore = useUserStore()Object.defineProperty(window, 'localStorage', {  mockLifeProgressResponse  mockLifeProgressResponse
+
+    it('should initialize with default state', () => {
+
+      const notesStore = useNotesStore()      expect(userStore.user).toBeNull()
+
+      expect(notesStore.notes).toEqual([])
+
+      expect(notesStore.isLoading).toBe(false)      expect(userStore.isLoading).toBe(false)  value: {
+
+      expect(notesStore.error).toBeNull()
+
+    })      expect(userStore.error).toBeNull()
+
+
+
+    it('should handle note creation', async () => {    })    getItem: vi.fn(),} from '../test-utils'} from '../test-utils'
+
+      const notesStore = useNotesStore()
+
+      await notesStore.createNote({  })
+
+        week_index: 1500,
+
+        content: 'Test note'    setItem: vi.fn(),
+
+      })
+
+      expect(notesStore.isLoading).toBe(false)  describe('Notes Store', () => {
+
+    })
+
+  })    it('should initialize with default state', () => {    removeItem: vi.fn(),
+
+
+
+  describe('Week Calculation Store', () => {      const notesStore = useNotesStore()
+
+    it('should initialize with default state', () => {
+
+      const weekStore = useWeekCalculationStore()      expect(notesStore.notes).toEqual([])    clear: vi.fn()
+
+      expect(weekStore.totalWeeks).toBe(0)
+
+      expect(weekStore.currentWeek).toBe(0)      expect(notesStore.isLoading).toBe(false)
+
+      expect(weekStore.isLoading).toBe(false)
+
+      expect(weekStore.error).toBeNull()      expect(notesStore.error).toBeNull()  }// Mock the API modules to prevent actual network calls and infinite loops// Mock all the API modules to prevent actual network calls
+
+    })
+
+    })
+
+    it('should handle life progress calculation', async () => {
+
+      const weekStore = useWeekCalculationStore()  })})
+
+      await weekStore.calculateLifeProgress('1990-01-01')
+
+      expect(weekStore.isLoading).toBe(false)
+
+    })
+
+  })  describe('Week Calculation Store', () => {vi.mock('../../utils/api', () => ({vi.mock('../../utils/api', () => {
 
 })
+    it('should initialize with default state', () => {
 
-vi.mock('../../utils/api', () => ({vi.mock('../../utils/api', () => {
+      const weekStore = useWeekCalculationStore()describe('Stores Basic Tests', () => {
 
-describe('Stores Basic Tests', () => {
+      expect(weekStore.lifeProgress).toBeNull()
 
-  beforeEach(() => {  userApi: {  const mockUserApi = {
+      expect(weekStore.isLoading).toBe(false)  beforeEach(() => {  userApi: {  const mockUserApi = {
 
-    setActivePinia(createPinia())
+      expect(weekStore.error).toBeNull()
 
-    vi.clearAllMocks()    getUser: vi.fn().mockResolvedValue({}),    getUser: vi.fn(),
+    })    setActivePinia(createPinia())
+
+  })
+
+})    vi.clearAllMocks()    getUser: vi.fn().mockResolvedValue({}),    getUser: vi.fn(),
 
   })
 

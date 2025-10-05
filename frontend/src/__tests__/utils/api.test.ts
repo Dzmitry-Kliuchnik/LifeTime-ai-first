@@ -1,44 +1,79 @@
-// Tests for API client utilities // Tests for API client utilities only
+// Tests for API client utilities
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { apiUtils, ApiClientError } from '../../utils/api' 
 
-import { import { 
+// Mock fetch for tests
 
-  apiUtils,  apiUtils,
+const mockFetch = vi.fn()  apiUtils,  apiUtils,
+
+global.fetch = mockFetch
 
   ApiClientError   ApiClientError 
 
-} from '../../utils/api'} from '../../utils/api'
+describe('API Utils', () => {
 
-import { import { 
+  beforeEach(() => {} from '../../utils/api'} from '../../utils/api'
 
-  setupTest,   setupTest, 
+    vi.clearAllMocks()
 
-  cleanupTest  cleanupTest
-
-} from '../test-utils'} from '../test-utils'
+  })import { import { 
 
 
 
-describe('API Utilities', () => {describe('API Client Utilities', () => {
+  afterEach(() => {  setupTest,   setupTest, 
 
-  beforeEach(() => {  beforeEach(() => {
+    vi.resetAllMocks()
+
+  })  cleanupTest  cleanupTest
+
+
+
+  describe('ApiClientError', () => {} from '../test-utils'} from '../test-utils'
+
+    it('should create error with message and status', () => {
+
+      const error = new ApiClientError('Test error', 404)
+
+      expect(error.message).toBe('Test error')
+
+      expect(error.status).toBe(404)describe('API Utilities', () => {describe('API Client Utilities', () => {
+
+      expect(error.name).toBe('ApiClientError')
+
+    })  beforeEach(() => {  beforeEach(() => {
+
+  })
 
     setupTest()    setupTest()
 
-    vi.clearAllMocks()    vi.clearAllMocks()
+  describe('apiUtils', () => {
 
-  })  })
+    it('should have isApiError method', () => {    vi.clearAllMocks()    vi.clearAllMocks()
 
+      expect(typeof apiUtils.isApiError).toBe('function')
 
-
-  afterEach(() => {  afterEach(() => {
-
-    cleanupTest()    cleanupTest()
-
-  })  })
+    })  })  })
 
 
+
+    it('should identify ApiClientError instances', () => {
+
+      const apiError = new ApiClientError('Test', 400)
+
+      const regularError = new Error('Test')  afterEach(() => {  afterEach(() => {
+
+      
+
+      expect(apiUtils.isApiError(apiError)).toBe(true)    cleanupTest()    cleanupTest()
+
+      expect(apiUtils.isApiError(regularError)).toBe(false)
+
+    })  })  })
+
+  })
+
+})
 
   describe('ApiClientError', () => {  describe('API Utilities', () => {
 

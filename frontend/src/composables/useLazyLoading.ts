@@ -134,7 +134,14 @@ export function useLazyLoading<T>(options: LazyLoadingOptions<T>) {
 
     // Load the data
     await loadRange(index, index)
-    return getCachedData(index)
+    // Get the data directly from cache without incrementing hit counter
+    const entry = cache.value.get(index)
+    if (entry) {
+      entry.lastAccessed = Date.now()
+      entry.accessCount++
+      return entry.data
+    }
+    return null
   }
 
   // Load data for a range of indices
