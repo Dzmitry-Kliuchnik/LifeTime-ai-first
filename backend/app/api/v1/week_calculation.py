@@ -4,7 +4,7 @@ API endpoints for week calculation functionality.
 
 from datetime import date
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Query, status
 from fastapi.responses import JSONResponse
 
 from app.schemas.week_calculation import (
@@ -27,6 +27,10 @@ from app.services.week_calculation import (
 # Create router for week calculation endpoints
 week_router = APIRouter(prefix="/weeks", tags=["week-calculation"])
 
+# Constants for error messages
+FUTURE_DATE_ERROR = "Date of birth cannot be in the future"
+MIN_YEAR_ERROR = "Date of birth must be after year 1900"
+
 
 def handle_week_calculation_error(error: Exception) -> JSONResponse:
     """Handle week calculation service errors and return appropriate HTTP responses."""
@@ -36,7 +40,7 @@ def handle_week_calculation_error(error: Exception) -> JSONResponse:
             content={
                 "error": "FutureDateError",
                 "message": str(error),
-                "details": "Date of birth cannot be in the future",
+                "details": FUTURE_DATE_ERROR,
             },
         )
     elif isinstance(error, InvalidDateError):
@@ -45,7 +49,7 @@ def handle_week_calculation_error(error: Exception) -> JSONResponse:
             content={
                 "error": "InvalidDateError",
                 "message": str(error),
-                "details": "Date of birth is invalid or before year 1900",
+                "details": MIN_YEAR_ERROR,
             },
         )
     elif isinstance(error, InvalidTimezoneError):
@@ -176,6 +180,163 @@ async def calculate_life_progress_endpoint(
         )
 
         return LifeProgressResponse(**progress)
+    except Exception as e:
+        return handle_week_calculation_error(e)
+
+
+# GET endpoints with query parameters
+
+
+@week_router.get(
+    "/total",
+    response_model=TotalWeeksResponse,
+    summary="Calculate total weeks in lifespan (GET)",
+    description="Calculate the total number of weeks in a person's expected lifespan using query parameters. "
+    "This endpoint provides the same functionality as POST /total-weeks but uses query parameters for easier integration.",
+    responses={
+        400: {"model": ErrorResponse, "description": "Invalid query parameters"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+    },
+    tags=["week-calculation"],
+    openapi_extra={
+        "examples": {
+            "basic": {
+                "summary": "Basic calculation",
+                "description": "Calculate total weeks for someone born in 1990 with 80-year lifespan",
+                "value": {"date_of_birth": "1990-01-15", "lifespan_years": 80},
+            },
+            "different_lifespan": {
+                "summary": "Different lifespan",
+                "description": "Calculate with a different expected lifespan",
+                "value": {"date_of_birth": "1985-06-20", "lifespan_years": 90},
+            },
+        }
+    },
+)
+async def get_total_weeks(
+    date_of_birth: date = Query(
+        ..., description="Date of birth in YYYY-MM-DD format", example="1990-01-15"
+    ),
+    lifespan_years: int = Query(
+        80, ge=1, le=150, description="Expected lifespan in years", example=80
+    ),
+) -> TotalWeeksResponse:
+    """
+    Calculate total weeks in expected lifespan using query parameters.
+
+    This endpoint calculates the total number of weeks a person is expected to live
+    based on their date of birth and expected lifespan in years. It properly handles
+    leap years using dateutil's relativedelta for accurate calculations.
+
+    Parameters:
+    - **date_of_birth**: Date of birth (YYYY-MM-DD format)
+    - **lifespan_years**: Expected lifespan in years (1-150)
+
+    Returns comprehensive information including:
+    - Original date of birth
+    - Expected lifespan years
+    - Total weeks calculated
+    """
+    try:
+        # Validate date of birth
+        if date_of_birth > date.today():
+            raise ValueError(FUTURE_DATE_ERROR)
+        if date_of_birth.year < 1900:
+            raise ValueError(MIN_YEAR_ERROR)
+
+        total_weeks = WeekCalculationService.calculate_total_weeks(
+            date_of_birth, lifespan_years
+        )
+
+        return TotalWeeksResponse(
+            date_of_birth=date_of_birth.isoformat(),
+            lifespan_years=lifespan_years,
+            total_weeks=total_weeks,
+        )
+    except Exception as e:
+        return handle_week_calculation_error(e)
+
+
+@week_router.get(
+    "/current",
+    response_model=CurrentWeekResponse,
+    summary="Calculate current week index (GET)",
+    description="Calculate the current week index since birth using query parameters with timezone support. "
+    "This endpoint provides the same functionality as POST /current-week but uses query parameters for easier integration.",
+    responses={
+        400: {"model": ErrorResponse, "description": "Invalid query parameters"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+    },
+    tags=["week-calculation"],
+    openapi_extra={
+        "examples": {
+            "utc": {
+                "summary": "UTC timezone",
+                "description": "Calculate current week using UTC timezone",
+                "value": {"date_of_birth": "1990-01-15", "timezone": "UTC"},
+            },
+            "new_york": {
+                "summary": "New York timezone",
+                "description": "Calculate current week using America/New_York timezone",
+                "value": {
+                    "date_of_birth": "1990-01-15",
+                    "timezone": "America/New_York",
+                },
+            },
+            "europe": {
+                "summary": "European timezone",
+                "description": "Calculate current week using Europe/London timezone",
+                "value": {"date_of_birth": "1985-06-20", "timezone": "Europe/London"},
+            },
+        }
+    },
+)
+async def get_current_week(
+    date_of_birth: date = Query(
+        ..., description="Date of birth in YYYY-MM-DD format", example="1990-01-15"
+    ),
+    timezone: str = Query(
+        "UTC",
+        description="Timezone for current time calculation (e.g., 'America/New_York', 'Europe/London')",
+        example="UTC",
+    ),
+) -> CurrentWeekResponse:
+    """
+    Calculate current week index since birth with timezone support.
+
+    This endpoint calculates which week of life a person is currently in,
+    starting from week 0 (birth week). It supports timezone-aware calculations
+    to provide accurate results regardless of the user's location.
+
+    Parameters:
+    - **date_of_birth**: Date of birth (YYYY-MM-DD format)
+    - **timezone**: Timezone identifier (e.g., 'UTC', 'America/New_York', 'Europe/London')
+
+    Returns comprehensive information including:
+    - Original date of birth
+    - Timezone used for calculation
+    - Current week index (0-based)
+    - Total weeks lived (1-based)
+    """
+    try:
+        # Validate date of birth
+        if date_of_birth > date.today():
+            raise ValueError(FUTURE_DATE_ERROR)
+        if date_of_birth.year < 1900:
+            raise ValueError(MIN_YEAR_ERROR)
+
+        current_week_index = WeekCalculationService.calculate_current_week_index(
+            date_of_birth, timezone
+        )
+
+        return CurrentWeekResponse(
+            date_of_birth=date_of_birth.isoformat(),
+            timezone=timezone,
+            current_week_index=current_week_index,
+            weeks_lived=current_week_index + 1,  # +1 because index is 0-based
+        )
     except Exception as e:
         return handle_week_calculation_error(e)
 

@@ -410,3 +410,444 @@ def test_week_type_enum_values(week_type):
     """Test all week type enum values are valid strings."""
     assert isinstance(week_type.value, str)
     assert len(week_type.value) > 0
+
+
+class TestWeekCalculationAPIEndpoints:
+    """Test cases for week calculation API endpoints."""
+
+    def test_get_total_weeks_valid_request(self, client):
+        """Test GET /weeks/total endpoint with valid parameters."""
+        response = client.get(
+            "/api/v1/weeks/total?date_of_birth=1990-01-15&lifespan_years=80"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert "date_of_birth" in data
+        assert "lifespan_years" in data
+        assert "total_weeks" in data
+        assert data["date_of_birth"] == "1990-01-15"
+        assert data["lifespan_years"] == 80
+        assert data["total_weeks"] > 0
+        assert isinstance(data["total_weeks"], int)
+
+    def test_get_total_weeks_default_lifespan(self, client):
+        """Test GET /weeks/total endpoint with default lifespan parameter."""
+        response = client.get("/api/v1/weeks/total?date_of_birth=1990-01-15")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["lifespan_years"] == 80  # Default value
+        assert data["total_weeks"] > 0
+
+    def test_get_total_weeks_invalid_date_format(self, client):
+        """Test GET /weeks/total endpoint with invalid date format."""
+        response = client.get(
+            "/api/v1/weeks/total?date_of_birth=invalid-date&lifespan_years=80"
+        )
+
+        assert response.status_code == 422  # Validation error
+
+    def test_get_total_weeks_future_date(self, client):
+        """Test GET /weeks/total endpoint with future date of birth."""
+        from datetime import date, timedelta
+
+        future_date = (date.today() + timedelta(days=365)).isoformat()
+
+        response = client.get(
+            f"/api/v1/weeks/total?date_of_birth={future_date}&lifespan_years=80"
+        )
+
+        assert response.status_code == 400
+        data = response.json()
+        assert "error" in data
+        assert "Date of birth cannot be in the future" in data["message"]
+
+    def test_get_total_weeks_invalid_lifespan(self, client):
+        """Test GET /weeks/total endpoint with invalid lifespan values."""
+        # Test zero lifespan
+        response = client.get(
+            "/api/v1/weeks/total?date_of_birth=1990-01-15&lifespan_years=0"
+        )
+        assert response.status_code == 422
+
+        # Test negative lifespan
+        response = client.get(
+            "/api/v1/weeks/total?date_of_birth=1990-01-15&lifespan_years=-5"
+        )
+        assert response.status_code == 422
+
+        # Test excessive lifespan
+        response = client.get(
+            "/api/v1/weeks/total?date_of_birth=1990-01-15&lifespan_years=200"
+        )
+        assert response.status_code == 422
+
+    def test_get_total_weeks_old_date(self, client):
+        """Test GET /weeks/total endpoint with very old date of birth."""
+        response = client.get(
+            "/api/v1/weeks/total?date_of_birth=1899-01-15&lifespan_years=80"
+        )
+
+        assert response.status_code == 400
+        data = response.json()
+        assert "error" in data
+        assert "Date of birth must be after year 1900" in data["message"]
+
+    def test_get_current_week_valid_request(self, client):
+        """Test GET /weeks/current endpoint with valid parameters."""
+        response = client.get(
+            "/api/v1/weeks/current?date_of_birth=1990-01-15&timezone=UTC"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert "date_of_birth" in data
+        assert "timezone" in data
+        assert "current_week_index" in data
+        assert "weeks_lived" in data
+        assert data["date_of_birth"] == "1990-01-15"
+        assert data["timezone"] == "UTC"
+        assert data["current_week_index"] >= 0
+        assert data["weeks_lived"] > 0
+        assert isinstance(data["current_week_index"], int)
+        assert isinstance(data["weeks_lived"], int)
+        # weeks_lived should be current_week_index + 1
+        assert data["weeks_lived"] == data["current_week_index"] + 1
+
+    def test_get_current_week_default_timezone(self, client):
+        """Test GET /weeks/current endpoint with default timezone."""
+        response = client.get("/api/v1/weeks/current?date_of_birth=1990-01-15")
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["timezone"] == "UTC"  # Default value
+
+    def test_get_current_week_different_timezones(self, client):
+        """Test GET /weeks/current endpoint with different timezones."""
+        dob = "1990-01-15"
+        timezones = ["UTC", "America/New_York", "Europe/London", "Asia/Tokyo"]
+        results = []
+
+        for timezone in timezones:
+            response = client.get(
+                f"/api/v1/weeks/current?date_of_birth={dob}&timezone={timezone}"
+            )
+            assert response.status_code == 200
+
+            data = response.json()
+            assert data["timezone"] == timezone
+            assert data["current_week_index"] >= 0
+            results.append(data["current_week_index"])
+
+        # Results should be close (within 1 week due to timezone differences)
+        assert max(results) - min(results) <= 1
+
+    def test_get_current_week_invalid_timezone(self, client):
+        """Test GET /weeks/current endpoint with invalid timezone."""
+        response = client.get(
+            "/api/v1/weeks/current?date_of_birth=1990-01-15&timezone=Invalid/Timezone"
+        )
+
+        assert response.status_code == 400
+        data = response.json()
+        assert "error" in data
+        assert "InvalidTimezoneError" in data["error"]
+
+    def test_get_current_week_future_date(self, client):
+        """Test GET /weeks/current endpoint with future date of birth."""
+        from datetime import date, timedelta
+
+        future_date = (date.today() + timedelta(days=365)).isoformat()
+
+        response = client.get(
+            f"/api/v1/weeks/current?date_of_birth={future_date}&timezone=UTC"
+        )
+
+        assert response.status_code == 400
+        data = response.json()
+        assert "error" in data
+        assert "Date of birth cannot be in the future" in data["message"]
+
+    def test_get_current_week_old_date(self, client):
+        """Test GET /weeks/current endpoint with very old date of birth."""
+        response = client.get(
+            "/api/v1/weeks/current?date_of_birth=1899-01-15&timezone=UTC"
+        )
+
+        assert response.status_code == 400
+        data = response.json()
+        assert "error" in data
+        assert "Date of birth must be after year 1900" in data["message"]
+
+    def test_get_current_week_today_birth(self, client):
+        """Test GET /weeks/current endpoint with today as date of birth."""
+        from datetime import date
+
+        today = date.today().isoformat()
+
+        response = client.get(
+            f"/api/v1/weeks/current?date_of_birth={today}&timezone=UTC"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["current_week_index"] == 0
+        assert data["weeks_lived"] == 1
+
+    def test_endpoints_consistency(self, client):
+        """Test that both GET endpoints return consistent data."""
+        dob = "1990-01-15"
+        lifespan = 80
+
+        # Get total weeks
+        total_response = client.get(
+            f"/api/v1/weeks/total?date_of_birth={dob}&lifespan_years={lifespan}"
+        )
+        assert total_response.status_code == 200
+        total_data = total_response.json()
+
+        # Get current week
+        current_response = client.get(
+            f"/api/v1/weeks/current?date_of_birth={dob}&timezone=UTC"
+        )
+        assert current_response.status_code == 200
+        current_data = current_response.json()
+
+        # Both should have same date of birth
+        assert total_data["date_of_birth"] == current_data["date_of_birth"]
+
+        # Current week should be less than total weeks
+        assert current_data["current_week_index"] < total_data["total_weeks"]
+
+    def test_missing_required_parameters(self, client):
+        """Test endpoints with missing required parameters."""
+        # Test total weeks without date_of_birth
+        response = client.get("/api/v1/weeks/total?lifespan_years=80")
+        assert response.status_code == 422
+
+        # Test current week without date_of_birth
+        response = client.get("/api/v1/weeks/current?timezone=UTC")
+        assert response.status_code == 422
+
+    @pytest.mark.parametrize(
+        "dob,lifespan",
+        [
+            ("1950-01-01", 90),
+            ("1980-06-15", 75),
+            ("2000-02-29", 80),  # Leap day
+            ("1970-12-31", 85),  # Year end
+        ],
+    )
+    def test_get_total_weeks_various_scenarios(self, client, dob, lifespan):
+        """Test GET /weeks/total endpoint with various scenarios."""
+        response = client.get(
+            f"/api/v1/weeks/total?date_of_birth={dob}&lifespan_years={lifespan}"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["date_of_birth"] == dob
+        assert data["lifespan_years"] == lifespan
+        assert data["total_weeks"] > 0
+        # Rough sanity check
+        assert abs(data["total_weeks"] - (lifespan * 52)) < (lifespan * 2)
+
+    @pytest.mark.parametrize(
+        "dob,timezone",
+        [
+            ("1990-01-15", "UTC"),
+            ("1985-06-20", "America/New_York"),
+            ("2000-02-29", "Europe/London"),
+            ("1975-12-25", "Asia/Tokyo"),
+        ],
+    )
+    def test_get_current_week_various_scenarios(self, client, dob, timezone):
+        """Test GET /weeks/current endpoint with various scenarios."""
+        response = client.get(
+            f"/api/v1/weeks/current?date_of_birth={dob}&timezone={timezone}"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["date_of_birth"] == dob
+        assert data["timezone"] == timezone
+        assert data["current_week_index"] >= 0
+        assert data["weeks_lived"] > 0
+        # Reasonable upper bound check
+        assert data["current_week_index"] < 3000
+
+
+class TestWeekCalculationAPIDocumentation:
+    """Test OpenAPI documentation for week calculation endpoints."""
+
+    def test_openapi_schema_generation(self, client):
+        """Test that OpenAPI schema is generated correctly."""
+        response = client.get("/openapi.json")
+        assert response.status_code == 200
+
+        schema = response.json()
+        assert "paths" in schema
+
+        # Check that our endpoints are in the schema
+        paths = schema["paths"]
+        assert "/api/v1/weeks/total" in paths
+        assert "/api/v1/weeks/current" in paths
+
+        # Check GET method exists for both endpoints
+        assert "get" in paths["/api/v1/weeks/total"]
+        assert "get" in paths["/api/v1/weeks/current"]
+
+    def test_total_weeks_endpoint_documentation(self, client):
+        """Test GET /weeks/total endpoint documentation."""
+        response = client.get("/openapi.json")
+        schema = response.json()
+
+        total_endpoint = schema["paths"]["/api/v1/weeks/total"]["get"]
+
+        # Check basic documentation fields
+        assert "summary" in total_endpoint
+        assert "description" in total_endpoint
+        assert "parameters" in total_endpoint
+        assert "responses" in total_endpoint
+
+        # Check parameters
+        params = total_endpoint["parameters"]
+        param_names = [p["name"] for p in params]
+        assert "date_of_birth" in param_names
+        assert "lifespan_years" in param_names
+
+        # Check responses
+        responses = total_endpoint["responses"]
+        assert "200" in responses
+        assert "400" in responses
+        assert "422" in responses
+
+    def test_current_week_endpoint_documentation(self, client):
+        """Test GET /weeks/current endpoint documentation."""
+        response = client.get("/openapi.json")
+        schema = response.json()
+
+        current_endpoint = schema["paths"]["/api/v1/weeks/current"]["get"]
+
+        # Check basic documentation fields
+        assert "summary" in current_endpoint
+        assert "description" in current_endpoint
+        assert "parameters" in current_endpoint
+        assert "responses" in current_endpoint
+
+        # Check parameters
+        params = current_endpoint["parameters"]
+        param_names = [p["name"] for p in params]
+        assert "date_of_birth" in param_names
+        assert "timezone" in param_names
+
+        # Check responses
+        responses = current_endpoint["responses"]
+        assert "200" in responses
+        assert "400" in responses
+        assert "422" in responses
+
+    def test_response_models_in_schema(self, client):
+        """Test that response models are properly defined in schema."""
+        response = client.get("/openapi.json")
+        schema = response.json()
+
+        # Check that our response models are in components
+        components = schema.get("components", {})
+        schemas = components.get("schemas", {})
+
+        assert "TotalWeeksResponse" in schemas
+        assert "CurrentWeekResponse" in schemas
+        assert "ErrorResponse" in schemas
+
+        # Check TotalWeeksResponse properties
+        total_schema = schemas["TotalWeeksResponse"]
+        assert "properties" in total_schema
+        props = total_schema["properties"]
+        assert "date_of_birth" in props
+        assert "lifespan_years" in props
+        assert "total_weeks" in props
+
+        # Check CurrentWeekResponse properties
+        current_schema = schemas["CurrentWeekResponse"]
+        assert "properties" in current_schema
+        props = current_schema["properties"]
+        assert "date_of_birth" in props
+        assert "timezone" in props
+        assert "current_week_index" in props
+        assert "weeks_lived" in props
+
+
+class TestWeekCalculationAPIErrorHandling:
+    """Test comprehensive error handling for week calculation API endpoints."""
+
+    def test_total_weeks_comprehensive_error_handling(self, client):
+        """Test comprehensive error handling for GET /weeks/total."""
+        # Test with malformed query parameters
+        test_cases = [
+            ("/api/v1/weeks/total", 422),  # No parameters
+            ("/api/v1/weeks/total?date_of_birth=", 422),  # Empty date
+            (
+                "/api/v1/weeks/total?date_of_birth=not-a-date",
+                422,
+            ),  # Invalid date format
+            (
+                "/api/v1/weeks/total?date_of_birth=1990-13-50",
+                422,
+            ),  # Invalid date values
+            (
+                "/api/v1/weeks/total?date_of_birth=1990-01-15&lifespan_years=abc",
+                422,
+            ),  # Non-numeric lifespan
+        ]
+
+        for url, expected_status in test_cases:
+            response = client.get(url)
+            assert response.status_code == expected_status, f"Failed for URL: {url}"
+
+    def test_current_week_comprehensive_error_handling(self, client):
+        """Test comprehensive error handling for GET /weeks/current."""
+        # Test with malformed query parameters
+        test_cases = [
+            ("/api/v1/weeks/current", 422),  # No parameters
+            ("/api/v1/weeks/current?date_of_birth=", 422),  # Empty date
+            (
+                "/api/v1/weeks/current?date_of_birth=not-a-date",
+                422,
+            ),  # Invalid date format
+            (
+                "/api/v1/weeks/current?date_of_birth=1990-13-50",
+                422,
+            ),  # Invalid date values
+        ]
+
+        for url, expected_status in test_cases:
+            response = client.get(url)
+            assert response.status_code == expected_status, f"Failed for URL: {url}"
+
+    def test_error_response_format(self, client):
+        """Test that error responses follow the correct format."""
+        response = client.get(
+            "/api/v1/weeks/total?date_of_birth=2050-01-01&lifespan_years=80"
+        )
+
+        assert response.status_code == 400
+        data = response.json()
+
+        # Check error response structure
+        assert "error" in data
+        assert "message" in data
+        assert "details" in data
+
+        assert isinstance(data["error"], str)
+        assert isinstance(data["message"], str)
+        assert len(data["error"]) > 0
+        assert len(data["message"]) > 0

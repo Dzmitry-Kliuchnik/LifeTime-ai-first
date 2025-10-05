@@ -152,18 +152,101 @@ class LifeProgressResponse(BaseModel):
 class TotalWeeksResponse(BaseModel):
     """Response schema for total weeks calculation."""
 
-    date_of_birth: str = Field(..., description=DOB_ISO_DESCRIPTION)
-    lifespan_years: int = Field(..., description=LIFESPAN_DESCRIPTION)
-    total_weeks: int = Field(..., description="Total weeks in expected lifespan")
+    date_of_birth: str = Field(
+        ...,
+        description=DOB_ISO_DESCRIPTION,
+        json_schema_extra={"example": "1990-01-15"},
+    )
+    lifespan_years: int = Field(
+        ..., description=LIFESPAN_DESCRIPTION, json_schema_extra={"example": 80}
+    )
+    total_weeks: int = Field(
+        ...,
+        description="Total weeks in expected lifespan",
+        json_schema_extra={"example": 4174},
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "date_of_birth": "1990-01-15",
+                "lifespan_years": 80,
+                "total_weeks": 4174,
+            }
+        }
 
 
 class CurrentWeekResponse(BaseModel):
     """Response schema for current week calculation."""
 
-    date_of_birth: str = Field(..., description=DOB_ISO_DESCRIPTION)
-    timezone: str = Field(..., description="Timezone used for calculations")
-    current_week_index: int = Field(..., description="Current week index (0-based)")
-    weeks_lived: int = Field(..., description="Number of weeks lived")
+    date_of_birth: str = Field(
+        ...,
+        description=DOB_ISO_DESCRIPTION,
+        json_schema_extra={"example": "1990-01-15"},
+    )
+    timezone: str = Field(
+        ...,
+        description="Timezone used for calculations",
+        json_schema_extra={"example": "UTC"},
+    )
+    current_week_index: int = Field(
+        ...,
+        description="Current week index (0-based)",
+        json_schema_extra={"example": 1820},
+    )
+    weeks_lived: int = Field(
+        ..., description="Number of weeks lived", json_schema_extra={"example": 1821}
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "date_of_birth": "1990-01-15",
+                "timezone": "UTC",
+                "current_week_index": 1820,
+                "weeks_lived": 1821,
+            }
+        }
+
+
+class TotalWeeksQueryParams(BaseModel):
+    """Query parameters for GET /weeks/total endpoint."""
+
+    date_of_birth: date = Field(
+        ..., description=DOB_DESCRIPTION, json_schema_extra={"example": "1990-01-15"}
+    )
+    lifespan_years: int = Field(
+        80,
+        ge=1,
+        le=150,
+        description=LIFESPAN_DESCRIPTION,
+        json_schema_extra={"example": 80},
+    )
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def validate_dob(cls, v):
+        """Validate date of birth is not in the future."""
+        return validate_dob_common(v)
+
+
+class CurrentWeekQueryParams(BaseModel):
+    """Query parameters for GET /weeks/current endpoint."""
+
+    date_of_birth: date = Field(
+        ..., description=DOB_DESCRIPTION, json_schema_extra={"example": "1990-01-15"}
+    )
+    timezone: str = Field(
+        "UTC",
+        description=TIMEZONE_DESCRIPTION,
+        json_schema_extra={"example": TIMEZONE_EXAMPLE},
+    )
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def validate_dob(cls, v):
+        """Validate date of birth is not in the future."""
+        return validate_dob_common(v)
 
 
 class ErrorResponse(BaseModel):
