@@ -4,8 +4,13 @@ API v1 router configuration.
 
 from fastapi import APIRouter
 
+from .week_calculation import week_router
+
 # Create the main API router
 api_router = APIRouter()
+
+# Include week calculation routes
+api_router.include_router(week_router)
 
 
 # Health endpoint for API
