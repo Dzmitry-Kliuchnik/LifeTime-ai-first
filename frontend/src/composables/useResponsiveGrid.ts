@@ -280,7 +280,7 @@ export function useResponsiveGrid(options: ResponsiveOptions) {
 }
 
 // Specialized hook for lifetime grid responsive behavior
-export function useLifetimeGridResponsive(baseCellSize: number = 12) {
+export function useLifetimeGridResponsive(baseCellSize: number = 16) {
   const responsiveGrid = useResponsiveGrid({
     baseConfig: {
       columns: 52,

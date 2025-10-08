@@ -29,15 +29,17 @@ class User(Base):
         nullable=False,
         comment="Unique username for login",
     )
-    email: Mapped[str] = mapped_column(
+    email: Mapped[Optional[str]] = mapped_column(
         String(255),
         unique=True,
         index=True,
-        nullable=False,
-        comment="User email address",
+        nullable=True,
+        comment="User email address (optional for name-based users)",
     )
-    hashed_password: Mapped[str] = mapped_column(
-        String(255), nullable=False, comment="Bcrypt hashed password"
+    hashed_password: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="Bcrypt hashed password (optional for name-based users)",
     )
 
     # User status and metadata

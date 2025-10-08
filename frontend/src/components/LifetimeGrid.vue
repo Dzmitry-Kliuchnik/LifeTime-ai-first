@@ -983,6 +983,7 @@ watch(() => userStore.userLifespan, loadGridData)
   height: 4px;
   background: var(--color-notes-indicator, #6366f1);
   border-radius: 50%;
+  pointer-events: none;
 }
 
 /* Special marker */
@@ -994,6 +995,7 @@ watch(() => userStore.userLifespan, loadGridData)
   height: 3px;
   background: var(--color-special-marker, #f59e0b);
   border-radius: 1px;
+  pointer-events: none;
 }
 
 /* Grid legend */

@@ -1,27 +1,25 @@
 <template>
   <teleport to="body">
     <!-- Modal Overlay -->
-    <transition name="modal-overlay" appear>
-      <div
-        v-if="isOpen"
-        class="modal-overlay"
-        :style="solidOverlayStyles"
-        @click="handleOverlayClick"
-        :aria-hidden="!isOpen"
-      >
+    <div
+      v-if="isOpen"
+      class="modal-overlay"
+      :style="solidOverlayStyles"
+      @click="handleOverlayClick"
+      :aria-hidden="!isOpen"
+    >
         <!-- Drawer/Modal Container -->
-        <transition name="modal-content" appear>
-          <dialog
-            v-if="isOpen"
-            ref="modalContent"
-            class="modal-content solid-modal"
-            :class="[`modal-${variant}`, `modal-${size}`, { 'modal-mobile': isMobile }]"
-            :style="solidModalStyles"
-            :aria-labelledby="titleId"
-            :aria-describedby="descriptionId"
-            open
-            @click.stop
-          >
+        <dialog
+          v-if="isOpen"
+          ref="modalContent"
+          class="modal-content solid-modal"
+          :class="[`modal-${variant}`, `modal-${size}`, { 'modal-mobile': isMobile }]"
+          :style="solidModalStyles"
+          :aria-labelledby="titleId"
+          :aria-describedby="descriptionId"
+          open
+          @click.stop
+        >
             <!-- Modal Header -->
             <div class="modal-header" :style="solidModalStyles">
               <div class="modal-header-top">
@@ -70,10 +68,8 @@
             <div v-if="$slots.footer" class="modal-footer" :style="solidModalStyles">
               <slot name="footer" :close="close" :isOpen="isOpen" />
             </div>
-          </dialog>
-        </transition>
+        </dialog>
       </div>
-    </transition>
   </teleport>
 </template>
 

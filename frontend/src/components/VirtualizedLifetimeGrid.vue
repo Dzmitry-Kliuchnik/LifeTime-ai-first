@@ -150,7 +150,7 @@ const props = withDefaults(defineProps<Props>(), {
   showNotes: true,
   interactive: true,
   maxWidth: '100%',
-  cellSize: 12,
+  cellSize: 16,
   containerHeight: 600,
   showPerformanceMetrics: false,
 })

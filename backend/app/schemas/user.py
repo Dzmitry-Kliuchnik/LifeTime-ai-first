@@ -8,13 +8,40 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
+class UserByNameCreate(BaseModel):
+    """Schema for creating a user with just a name."""
+
+    full_name: str = Field(
+        ..., min_length=1, max_length=255, description="User's full name"
+    )
+    date_of_birth: Optional[date] = Field(None, description="User's date of birth")
+    lifespan: Optional[int] = Field(
+        80, ge=1, le=150, description="Expected lifespan in years"
+    )
+    theme: Optional[str] = Field("light", description="UI theme preference")
+    font_size: Optional[int] = Field(
+        14, ge=8, le=72, description="UI font size preference"
+    )
+
+    @field_validator("theme")
+    @classmethod
+    def validate_theme(cls, v: Optional[str]) -> Optional[str]:
+        """Validate theme selection."""
+        if v is None:
+            return v
+        allowed_themes = {"light", "dark", "auto"}
+        if v not in allowed_themes:
+            raise ValueError(f'Theme must be one of: {", ".join(allowed_themes)}')
+        return v
+
+
 class UserBase(BaseModel):
     """Base schema for User with common fields."""
 
     username: str = Field(
         ..., min_length=3, max_length=50, description="Unique username"
     )
-    email: EmailStr = Field(..., description="User email address")
+    email: Optional[EmailStr] = Field(None, description="User email address (optional)")
     full_name: Optional[str] = Field(
         None, max_length=255, description="User's full display name"
     )
@@ -66,7 +93,9 @@ class UserProfile(BaseModel):
 class UserCreate(UserBase, UserProfile):
     """Schema for creating a new user."""
 
-    password: str = Field(..., min_length=8, description="User password")
+    password: Optional[str] = Field(
+        None, min_length=8, description="User password (optional for name-based users)"
+    )
 
     @field_validator("password")
     @classmethod

@@ -418,3 +418,23 @@ class UserRepository:
         """
         self.db.refresh(user)
         return user
+
+    def get_by_full_name(
+        self, full_name: str, include_deleted: bool = False
+    ) -> Optional[User]:
+        """
+        Get user by full name.
+
+        Args:
+            full_name: Full name to search for
+            include_deleted: Whether to include soft-deleted users
+
+        Returns:
+            User instance or None
+        """
+        query = self.db.query(User).filter(User.full_name == full_name)
+
+        if not include_deleted:
+            query = query.filter(~User.is_deleted)
+
+        return query.first()

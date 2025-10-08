@@ -16,6 +16,7 @@ from app.core.rate_limiting import (
 )
 from app.schemas.user import (
     PasswordChange,
+    UserByNameCreate,
     UserCreate,
     UserProfileUpdate,
     UserResponse,
@@ -51,6 +52,45 @@ async def create_user(
     """
     try:
         user = UserService.create_user(db, user_data)
+        return UserResponse.model_validate(user)
+    except ConflictError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
+        )
+
+
+@user_router.post(
+    "/by-name", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+)
+async def find_or_create_user_by_name(
+    user_data: UserByNameCreate, db: Session = Depends(get_db)
+) -> UserResponse:
+    """
+    Find existing user by name or create a new one with default settings.
+    This is useful for simple user management where users are identified by name only.
+
+    Args:
+        user_data: User data including full name and optional settings
+        db: Database session
+
+    Returns:
+        User information (existing or newly created)
+
+    Raises:
+        409: Unable to create user
+        422: Validation error
+    """
+    try:
+        user = UserService.find_or_create_user_by_name(
+            db=db,
+            full_name=user_data.full_name,
+            date_of_birth=user_data.date_of_birth,
+            lifespan=user_data.lifespan,
+            theme=user_data.theme,
+            font_size=user_data.font_size,
+        )
         return UserResponse.model_validate(user)
     except ConflictError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
@@ -96,6 +136,45 @@ async def get_users(
         is_active=is_active,
     )
     return [UserSummary.model_validate(user) for user in users]
+
+
+@user_router.get("/by-name/{full_name}", response_model=UserResponse)
+async def get_user_by_name(
+    full_name: str, db: Session = Depends(get_db)
+) -> UserResponse:
+    """
+    Get user by full name.
+
+    Args:
+        full_name: User's full name
+        db: Database session
+
+    Returns:
+        User information
+
+    Raises:
+        404: User not found
+    """
+    try:
+        from app.repositories.user import UserRepository
+
+        repo = UserRepository(db)
+        user = repo.get_by_full_name(full_name, include_deleted=False)
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User with name '{full_name}' not found",
+            )
+
+        return UserResponse.model_validate(user)
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
+        )
 
 
 @user_router.get("/{user_id}", response_model=UserResponse)

@@ -152,7 +152,7 @@ describe('LifetimeGrid Utilities', () => {
 
       cellSizes.forEach((size) => {
         expect(size).toBeGreaterThan(0)
-        expect(size).toBeLessThanOrEqual(20) // Reasonable maximum
+        expect(size).toBeLessThanOrEqual(24) // Reasonable maximum
       })
     })
 

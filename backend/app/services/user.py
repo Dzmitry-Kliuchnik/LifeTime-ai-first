@@ -95,6 +95,7 @@ class UserService:
             hashed_password = UserService.hash_password(user_data.password)
 
             # Create user instance
+            current_time = datetime.utcnow()
             db_user = User(
                 username=user_data.username,
                 email=user_data.email,
@@ -109,6 +110,8 @@ class UserService:
                 is_verified=False,
                 is_superuser=False,
                 is_deleted=False,
+                created_at=current_time,
+                updated_at=current_time,
             )
 
             db.add(db_user)
@@ -175,6 +178,175 @@ class UserService:
             query = query.filter(User.is_deleted == False)
 
         return query.first()
+
+    @staticmethod
+    def find_or_create_user_by_name(db: Session, full_name: str, **kwargs) -> User:
+        """
+        Find existing user by full name and update with new data, or create a new one with default settings.
+
+        Args:
+            db: Database session
+            full_name: User's full name
+            **kwargs: Additional user data (date_of_birth, lifespan, theme, font_size)
+
+        Returns:
+            User instance (existing updated or newly created)
+        """
+        import secrets
+
+        from app.repositories.user import UserRepository
+
+        repo = UserRepository(db)
+
+        # Try to find existing user by full name
+        existing_user = repo.get_by_full_name(full_name, include_deleted=False)
+        logger.info(f"FIND_OR_CREATE: Looking for user with name: {full_name}")
+        if existing_user:
+            logger.info(
+                f"Found existing user by name: {full_name} (ID: {existing_user.id})"
+            )
+
+            # Update existing user with new data if provided
+            update_made = False
+            current_time = datetime.utcnow()
+
+            # Debug logging
+            logger.info(f"DEBUG: kwargs received: {kwargs}")
+            logger.info(f"DEBUG: Current user DOB: {existing_user.date_of_birth}")
+            logger.info(f"DEBUG: Current user lifespan: {existing_user.lifespan}")
+            logger.info(f"DEBUG: Current user theme: {existing_user.theme}")
+            logger.info(f"DEBUG: Current user font_size: {existing_user.font_size}")
+
+            # Handle date conversion if string is provided
+            date_of_birth = kwargs.get("date_of_birth")
+            if isinstance(date_of_birth, str):
+                date_of_birth = datetime.strptime(date_of_birth, "%Y-%m-%d").date()
+
+            logger.info(f"DEBUG: Processed DOB: {date_of_birth}")
+
+            # Update fields if new values are provided and different from current values
+            if (
+                date_of_birth is not None
+                and existing_user.date_of_birth != date_of_birth
+            ):
+                existing_user.date_of_birth = date_of_birth
+                update_made = True
+                logger.info(
+                    f"Updated date_of_birth for user {full_name}: {date_of_birth}"
+                )
+
+            if kwargs.get(
+                "lifespan"
+            ) is not None and existing_user.lifespan != kwargs.get("lifespan"):
+                existing_user.lifespan = kwargs.get("lifespan")
+                update_made = True
+                logger.info(
+                    f"Updated lifespan for user {full_name}: {kwargs.get('lifespan')}"
+                )
+
+            if kwargs.get("theme") is not None and existing_user.theme != kwargs.get(
+                "theme"
+            ):
+                existing_user.theme = kwargs.get("theme")
+                update_made = True
+                logger.info(
+                    f"Updated theme for user {full_name}: {kwargs.get('theme')}"
+                )
+
+            if kwargs.get(
+                "font_size"
+            ) is not None and existing_user.font_size != kwargs.get("font_size"):
+                existing_user.font_size = kwargs.get("font_size")
+                update_made = True
+                logger.info(
+                    f"Updated font_size for user {full_name}: {kwargs.get('font_size')}"
+                )
+
+            # Update bio if provided
+            if kwargs.get("bio") is not None and existing_user.bio != kwargs.get("bio"):
+                existing_user.bio = kwargs.get("bio")
+                update_made = True
+                logger.info(f"Updated bio for user {full_name}")
+
+            # Commit updates if any changes were made
+            if update_made:
+                existing_user.updated_at = current_time
+                try:
+                    db.commit()
+                    db.refresh(existing_user)
+                    logger.info(
+                        f"Successfully updated existing user: {full_name} (ID: {existing_user.id})"
+                    )
+                except Exception as e:
+                    db.rollback()
+                    logger.error(f"Error updating existing user {full_name}: {e}")
+                    raise
+
+            return existing_user
+
+        # Create new user with name-based username
+        # Generate a unique username from the full name
+        base_username = full_name.lower().replace(" ", "_").replace("-", "_")
+        # Remove any non-alphanumeric characters except underscores
+        base_username = "".join(c for c in base_username if c.isalnum() or c == "_")
+        base_username = base_username[:40]  # Limit length
+
+        # Ensure username is unique
+        username = base_username
+        counter = 1
+        while repo.get_by_username(username, include_deleted=False):
+            username = f"{base_username}_{counter}"
+            counter += 1
+            if len(username) > 50:  # Database limit
+                # Use a random suffix if username gets too long
+                username = f"{base_username[:40]}_{secrets.randbelow(9999):04d}"
+                break
+
+        try:
+            # Handle date conversion if string is provided
+            date_of_birth = kwargs.get("date_of_birth")
+            if isinstance(date_of_birth, str):
+                date_of_birth = datetime.strptime(date_of_birth, "%Y-%m-%d").date()
+
+            # Create user instance with default values
+            current_time = datetime.utcnow()
+            db_user = User(
+                username=username,
+                email=None,  # No email required for name-based users
+                hashed_password=None,  # No password required
+                full_name=full_name,
+                bio=None,
+                date_of_birth=date_of_birth,
+                lifespan=kwargs.get("lifespan", 80),
+                theme=kwargs.get("theme", "light"),
+                font_size=kwargs.get("font_size", 14),
+                is_active=True,
+                is_verified=True,  # No email verification needed
+                is_superuser=False,
+                is_deleted=False,
+                created_at=current_time,
+                updated_at=current_time,
+            )
+
+            db.add(db_user)
+            db.commit()
+            db.refresh(db_user)
+
+            logger.info(
+                f"Created new name-based user: {full_name} -> {username} (ID: {db_user.id})"
+            )
+            return db_user
+
+        except IntegrityError as e:
+            db.rollback()
+            logger.error(f"Database integrity error creating name-based user: {e}")
+            raise ConflictError(
+                "Unable to create user - please try again with a different name"
+            )
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error creating name-based user: {e}")
+            raise
 
     @staticmethod
     def get_user_by_email(

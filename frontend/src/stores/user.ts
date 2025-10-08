@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type {
   User,
+  UserByNameCreate,
   UserCreate,
   UserUpdate,
   UserProfile,
@@ -137,6 +138,42 @@ export const useUserStore = defineStore('user', () => {
     } catch (err) {
       const errorMessage = apiUtils.getErrorMessage(err)
       setError(`Failed to create user: ${errorMessage}`)
+      setLoadingState('error')
+      return null
+    }
+  }
+
+  const findOrCreateUserByName = async (userData: UserByNameCreate): Promise<User | null> => {
+    try {
+      setLoadingState('loading')
+      clearError()
+
+      const user = await userApi.findOrCreateUserByName(userData)
+      setUser(user)
+
+      setLoadingState('success')
+      return user
+    } catch (err) {
+      const errorMessage = apiUtils.getErrorMessage(err)
+      setError(`Failed to find or create user: ${errorMessage}`)
+      setLoadingState('error')
+      return null
+    }
+  }
+
+  const getUserByName = async (fullName: string): Promise<User | null> => {
+    try {
+      setLoadingState('loading')
+      clearError()
+
+      const user = await userApi.getUserByName(fullName)
+      setUser(user)
+
+      setLoadingState('success')
+      return user
+    } catch (err) {
+      const errorMessage = apiUtils.getErrorMessage(err)
+      setError(`Failed to get user by name: ${errorMessage}`)
       setLoadingState('error')
       return null
     }
@@ -345,6 +382,8 @@ export const useUserStore = defineStore('user', () => {
     loadUserFromStorage,
     fetchUser,
     createUser,
+    findOrCreateUserByName,
+    getUserByName,
     updateUser,
     deleteUser,
     fetchUserProfile,

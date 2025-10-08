@@ -3,6 +3,7 @@ import axios, { type AxiosResponse, type AxiosError } from 'axios'
 import type {
   ApiError,
   User,
+  UserByNameCreate,
   UserCreate,
   UserUpdate,
   UserProfile,
@@ -126,6 +127,14 @@ export const userApi = {
   // Create new user
   createUser: (userData: UserCreate): Promise<User> =>
     apiPost<User>(`${API_V1_BASE}/users/`, userData),
+
+  // Find or create user by name
+  findOrCreateUserByName: (userData: UserByNameCreate): Promise<User> =>
+    apiPost<User>(`${API_V1_BASE}/users/by-name`, userData),
+
+  // Get user by name
+  getUserByName: (fullName: string): Promise<User> =>
+    apiGet<User>(`${API_V1_BASE}/users/by-name/${encodeURIComponent(fullName)}`),
 
   // Update user
   updateUser: (id: number, userData: UserUpdate): Promise<User> =>

@@ -61,6 +61,14 @@ export interface UserCreate {
   font_size?: number
 }
 
+export interface UserByNameCreate {
+  full_name: string
+  date_of_birth?: string
+  lifespan?: number
+  theme?: Theme
+  font_size?: number
+}
+
 export interface UserUpdate {
   username?: string
   email?: string

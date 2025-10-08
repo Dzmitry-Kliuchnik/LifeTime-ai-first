@@ -13,46 +13,23 @@
     <div v-if="!isUserSetup" class="setup-section">
       <div class="setup-card">
         <h2>Let's Get Started</h2>
-        <p>To display your life grid, we need some basic information:</p>
+        <p>Enter your name to begin creating your life grid:</p>
 
-        <form @submit.prevent="handleQuickSetup" class="setup-form">
+        <form @submit.prevent="handleNameSubmit" class="setup-form">
           <div class="form-group">
-            <label for="birth-date">Date of Birth:</label>
-            <input
-              id="birth-date"
-              v-model="setupData.dateOfBirth"
-              type="date"
-              required
-              class="form-control"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="lifespan">Expected Lifespan (years):</label>
-            <input
-              id="lifespan"
-              v-model.number="setupData.lifespan"
-              type="number"
-              min="50"
-              max="120"
-              required
-              class="form-control"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="full-name">Full Name (optional):</label>
+            <label for="full-name">Full Name:</label>
             <input
               id="full-name"
               v-model="setupData.fullName"
               type="text"
+              required
               class="form-control"
-              placeholder="Your full name"
+              placeholder="Enter your full name"
             />
           </div>
 
-          <button type="submit" class="btn-primary" :disabled="isLoading">
-            {{ isLoading ? 'Setting up...' : 'Create My Life Grid' }}
+          <button type="submit" class="btn-primary" :disabled="isLoading || !setupData.fullName.trim()">
+            {{ isLoading ? 'Checking...' : 'Continue' }}
           </button>
         </form>
       </div>
@@ -61,11 +38,10 @@
     <!-- Life Grid Section -->
     <div v-else class="grid-section">
       <div class="grid-header">
-        <h2>Your Life Journey</h2>
         <div class="life-stats" v-if="lifeProgress">
-          <div class="stat-item" v-if="lifeProgress.age_info">
+          <div class="stat-item" v-if="lifeProgress?.age_info?.years !== undefined">
             <span class="stat-label">Age:</span>
-            <span class="stat-value">{{ lifeProgress.age_info.years }} years</span>
+            <span class="stat-value">{{ lifeProgress.age_info?.years }} years</span>
           </div>
           <div class="stat-item" v-if="lifeProgress.weeks_lived !== undefined">
             <span class="stat-label">Weeks Lived:</span>
@@ -124,6 +100,8 @@
       </div>
     </div>
 
+
+
     <!-- Notes Modal -->
     <NotesModal
       :isOpen="isNotesModalOpen"
@@ -157,6 +135,18 @@
         :hide-header-actions="true"
       />
     </NotesModal>
+
+    <!-- User Confirmation Modal -->
+    <UserConfirmationModal
+      :is-open="isConfirmationModalOpen"
+      :title="confirmationModalTitle"
+      :message="confirmationModalMessage"
+      :confirm-button-text="confirmationButtonText"
+      :existing-date-of-birth="existingUserData?.date_of_birth"
+      :existing-lifespan="existingUserData?.lifespan"
+      @close="handleConfirmationModalClose"
+      @confirm="handleUserDataConfirmation"
+    />
   </div>
 </template>
 
@@ -167,6 +157,7 @@ import { useWeekCalculationStore } from '@/stores/week-calculation'
 import LifetimeGrid from '@/components/LifetimeGrid.vue'
 import NotesModal from '@/components/notes/NotesModal.vue'
 import NotesInterface from '@/components/notes/NotesInterface.vue'
+import UserConfirmationModal from '@/components/UserConfirmationModal.vue'
 
 // Stores
 const userStore = useUserStore()
@@ -185,6 +176,14 @@ const highlightedWeeks = ref<number[]>([])
 const isNotesModalOpen = ref(false)
 const selectedWeekForNotes = ref<{ weekIndex: number; weekData: any } | null>(null)
 const mainNotesInterface = ref<InstanceType<typeof NotesInterface> | null>(null)
+const hasConfirmedUser = ref(false) // Track if user has been confirmed in this session
+
+// User confirmation modal state
+const isConfirmationModalOpen = ref(false)
+const confirmationModalTitle = ref('')
+const confirmationModalMessage = ref('')
+const confirmationButtonText = ref('Continue')
+const existingUserData = ref<{ date_of_birth?: string; lifespan?: number } | null>(null)
 
 // Hover tooltip state
 const hoveredWeekInfo = ref<{
@@ -196,7 +195,8 @@ const hoveredWeekInfo = ref<{
 
 // Computed properties
 const isUserSetup = computed(() => {
-  return userStore.currentUser?.date_of_birth && userStore.currentUser?.lifespan
+  // Always show setup form on page load unless user has been confirmed in this session
+  return hasConfirmedUser.value && userStore.currentUser?.date_of_birth && userStore.currentUser?.lifespan
 })
 
 const lifeProgress = computed(() => weekCalculationStore.lifeProgress)
@@ -213,94 +213,139 @@ const visibleHighlightedWeeks = computed(() => {
 })
 
 // Methods
-async function handleQuickSetup() {
-  if (!setupData.value.dateOfBirth || !setupData.value.lifespan) {
+async function handleNameSubmit() {
+  if (!setupData.value.fullName.trim()) {
     return
   }
 
   isLoading.value = true
 
   try {
-    // Create a mock user for demonstration
-    // In a real app, this would call the user API
-    userStore.currentUser = {
-      id: 1,
-      username: 'demo-user',
-      email: 'demo@example.com',
-      full_name: setupData.value.fullName || 'Demo User',
-      date_of_birth: setupData.value.dateOfBirth,
-      lifespan: setupData.value.lifespan,
-      theme: 'light' as const,
-      is_active: true,
-      is_verified: true,
-      is_superuser: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+    // Check if user exists by name
+    const existingUser = await userStore.getUserByName(setupData.value.fullName.trim())
+    
+    if (existingUser) {
+      // User exists - show confirmation modal with prepopulated data
+      existingUserData.value = {
+        date_of_birth: existingUser.date_of_birth,
+        lifespan: existingUser.lifespan,
+      }
+      confirmationModalTitle.value = 'User Found'
+      confirmationModalMessage.value = `We found an existing user with the name "${setupData.value.fullName}". Please confirm or update your details:`
+      confirmationButtonText.value = 'Update Life Grid'
+    } else {
+      // User doesn't exist - show confirmation modal for new user
+      existingUserData.value = null
+      confirmationModalTitle.value = 'Create Your Life Grid'
+      confirmationModalMessage.value = `Hi ${setupData.value.fullName}! Please provide your birth date and expected lifespan to create your life grid:`
+      confirmationButtonText.value = 'Create Life Grid'
     }
-
-    // Mock life progress calculation for demo
-    const birthDate = new Date(setupData.value.dateOfBirth)
-    const now = new Date()
-    const daysSinceBirth = Math.floor((now.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24))
-    const weeksSinceBirth = Math.floor(daysSinceBirth / 7)
-    const totalLifetimeWeeks = Math.floor(setupData.value.lifespan * 52.1775)
-    const progressPercentage = (weeksSinceBirth / totalLifetimeWeeks) * 100
-
-    const ageYears = Math.floor(
-      (now.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25),
-    )
-    const ageMonths = Math.floor(
-      ((now.getTime() - birthDate.getTime()) % (1000 * 60 * 60 * 24 * 365.25)) /
-        (1000 * 60 * 60 * 24 * 30.44),
-    )
-    const ageDays = Math.floor(
-      ((now.getTime() - birthDate.getTime()) % (1000 * 60 * 60 * 24 * 30.44)) /
-        (1000 * 60 * 60 * 24),
-    )
-
-    // Manually set the store values for demo
-    const mockLifeProgress = {
-      date_of_birth: setupData.value.dateOfBirth,
-      timezone: 'UTC',
-      lifespan_years: setupData.value.lifespan,
-      total_weeks: totalLifetimeWeeks,
-      current_week_index: weeksSinceBirth,
-      weeks_lived: weeksSinceBirth,
-      progress_percentage: Math.min(100, progressPercentage),
-      age_info: {
-        years: ageYears,
-        months: ageMonths,
-        days: ageDays,
-      },
-      current_date: now.toISOString().split('T')[0]!,
-    }
-
-    // Set store values directly for demo (since we don't have API)
-    weekCalculationStore.lifeProgress = mockLifeProgress
-    weekCalculationStore.totalWeeks = {
-      date_of_birth: setupData.value.dateOfBirth,
-      lifespan_years: setupData.value.lifespan,
-      total_weeks: totalLifetimeWeeks,
-    }
-    weekCalculationStore.currentWeek = {
-      date_of_birth: setupData.value.dateOfBirth,
-      timezone: 'UTC',
-      current_week_index: weeksSinceBirth,
-      weeks_lived: weeksSinceBirth,
-      current_date: now.toISOString().split('T')[0]!,
-    }
+    
+    isConfirmationModalOpen.value = true
   } catch (error) {
-    console.error('Setup failed:', error)
-    // Handle error appropriately
+    console.error('Error checking user:', error)
+    // If getUserByName fails (user doesn't exist), treat as new user
+    existingUserData.value = null
+    confirmationModalTitle.value = 'Create Your Life Grid'
+    confirmationModalMessage.value = `Hi ${setupData.value.fullName}! Please provide your birth date and expected lifespan to create your life grid:`
+    confirmationButtonText.value = 'Create Life Grid'
+    isConfirmationModalOpen.value = true
   } finally {
     isLoading.value = false
   }
 }
 
-function handleWeekClick(weekIndex: number, weekData: any) {
-  console.log('Week clicked:', weekIndex, weekData)
-  console.log('Before update - isNotesModalOpen:', isNotesModalOpen.value)
+function handleConfirmationModalClose() {
+  isConfirmationModalOpen.value = false
+  existingUserData.value = null
+}
 
+async function handleUserDataConfirmation(userData: { dateOfBirth: string; lifespan: number }) {
+  isLoading.value = true
+  
+  try {
+    // Create or update user using the findOrCreateUserByName API
+    const user = await userStore.findOrCreateUserByName({
+      full_name: setupData.value.fullName.trim(),
+      date_of_birth: userData.dateOfBirth,
+      lifespan: userData.lifespan,
+      theme: 'light',
+      font_size: 14,
+    })
+
+    if (!user) {
+      console.error('Failed to create or find user')
+      return
+    }
+
+    await setupUserData(user, userData)
+    hasConfirmedUser.value = true // Mark user as confirmed in this session
+    isConfirmationModalOpen.value = false
+    existingUserData.value = null
+  } catch (error) {
+    console.error('User setup failed:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function setupUserData(user: any, userData: { dateOfBirth: string; lifespan: number }) {
+  // Use the user's settings for life progress calculation
+  const birthDate = new Date(user.date_of_birth || userData.dateOfBirth)
+  const now = new Date()
+  const daysSinceBirth = Math.floor((now.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24))
+  const weeksSinceBirth = Math.floor(daysSinceBirth / 7)
+  const totalLifetimeWeeks = Math.floor((user.lifespan || userData.lifespan) * 52.1775)
+  const progressPercentage = (weeksSinceBirth / totalLifetimeWeeks) * 100
+
+  const ageYears = Math.floor(
+    (now.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25),
+  )
+  const ageMonths = Math.floor(
+    ((now.getTime() - birthDate.getTime()) % (1000 * 60 * 60 * 24 * 365.25)) /
+      (1000 * 60 * 60 * 24 * 30.44),
+  )
+  const ageDays = Math.floor(
+    ((now.getTime() - birthDate.getTime()) % (1000 * 60 * 60 * 24 * 30.44)) /
+      (1000 * 60 * 60 * 24),
+  )
+
+  // Set store values using user data
+  const lifeProgress = {
+    date_of_birth: user.date_of_birth || userData.dateOfBirth,
+    timezone: 'UTC',
+    lifespan_years: user.lifespan || userData.lifespan,
+    total_weeks: totalLifetimeWeeks,
+    current_week_index: weeksSinceBirth,
+    weeks_lived: weeksSinceBirth,
+    progress_percentage: Math.min(100, progressPercentage),
+    age_info: {
+      years: ageYears,
+      months: ageMonths,
+      days: ageDays,
+    },
+    current_date: now.toISOString().split('T')[0]!,
+  }
+
+  // Set store values using persisted user data
+  weekCalculationStore.lifeProgress = lifeProgress
+  weekCalculationStore.totalWeeks = {
+    date_of_birth: user.date_of_birth || userData.dateOfBirth,
+    lifespan_years: user.lifespan || userData.lifespan,
+    total_weeks: totalLifetimeWeeks,
+  }
+  weekCalculationStore.currentWeek = {
+    date_of_birth: user.date_of_birth || userData.dateOfBirth,
+    timezone: 'UTC',
+    current_week_index: weeksSinceBirth,
+    weeks_lived: weeksSinceBirth,
+    current_date: now.toISOString().split('T')[0]!,
+  }
+}
+
+
+
+function handleWeekClick(weekIndex: number, weekData: any) {
   // Add to highlights if not already there
   if (!highlightedWeeks.value.includes(weekIndex)) {
     highlightedWeeks.value.push(weekIndex)
@@ -309,9 +354,6 @@ function handleWeekClick(weekIndex: number, weekData: any) {
   // Open notes modal for the selected week
   selectedWeekForNotes.value = { weekIndex, weekData }
   isNotesModalOpen.value = true
-
-  console.log('After update - isNotesModalOpen:', isNotesModalOpen.value)
-  console.log('selectedWeekForNotes:', selectedWeekForNotes.value)
 }
 
 function handleWeekHover(weekIndex: number, weekData: any, event?: MouseEvent) {
@@ -358,7 +400,8 @@ function handleToggleSearchRequest() {
 }
 
 function resetUser() {
-  userStore.currentUser = null
+  userStore.setUser(null)
+  hasConfirmedUser.value = false // Reset confirmation flag
 
   // Reset form data
   setupData.value = {
@@ -370,19 +413,25 @@ function resetUser() {
   hoveredWeekInfo.value = null
   isNotesModalOpen.value = false
   selectedWeekForNotes.value = null
-
-  // Set default birth date again
-  const thirtyYearsAgo = new Date()
-  thirtyYearsAgo.setFullYear(thirtyYearsAgo.getFullYear() - 30)
-  setupData.value.dateOfBirth = thirtyYearsAgo.toISOString().split('T')[0]!
+  
+  // Reset confirmation modal state
+  isConfirmationModalOpen.value = false
+  existingUserData.value = null
 }
 
 // Lifecycle
-onMounted(() => {
-  // Set default birth date to 30 years ago for demo
-  const thirtyYearsAgo = new Date()
-  thirtyYearsAgo.setFullYear(thirtyYearsAgo.getFullYear() - 30)
-  setupData.value.dateOfBirth = thirtyYearsAgo.toISOString().split('T')[0]!
+onMounted(async () => {
+  // Load user from storage if available
+  const user = userStore.loadUserFromStorage()
+  
+  // If user exists and has required data, initialize week calculations
+  if (user && user.date_of_birth && user.lifespan) {
+    try {
+      await weekCalculationStore.initializeForUser()
+    } catch (error) {
+      console.error('Failed to initialize week calculations:', error)
+    }
+  }
 })
 </script>
 
