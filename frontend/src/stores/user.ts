@@ -1,13 +1,13 @@
 // User store for managing user state and authentication
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { 
-  User, 
-  UserCreate, 
-  UserUpdate, 
-  UserProfile, 
-  PasswordChange, 
-  LoadingState 
+import type {
+  User,
+  UserCreate,
+  UserUpdate,
+  UserProfile,
+  PasswordChange,
+  LoadingState,
 } from '@/types'
 import { userApi, apiUtils } from '@/utils/api'
 import { timezoneUtils } from '@/utils/timezone'
@@ -21,13 +21,11 @@ export const useUserStore = defineStore('user', () => {
   const userProfile = ref<UserProfile | null>(null)
 
   // Getters
-  const hasDateOfBirth = computed(() => 
-    currentUser.value?.date_of_birth != null && currentUser.value.date_of_birth !== ''
+  const hasDateOfBirth = computed(
+    () => currentUser.value?.date_of_birth != null && currentUser.value.date_of_birth !== '',
   )
 
-  const userLifespan = computed(() => 
-    currentUser.value?.lifespan || 80
-  )
+  const userLifespan = computed(() => currentUser.value?.lifespan || 80)
 
   const userTimezone = computed(() => {
     // Try to get timezone from user profile or detect automatically
@@ -51,11 +49,14 @@ export const useUserStore = defineStore('user', () => {
       return currentUser.value?.username?.charAt(0).toUpperCase() || 'U'
     }
     const names = currentUser.value.full_name.split(' ')
-    return names.map(name => name.charAt(0).toUpperCase()).join('').slice(0, 2)
+    return names
+      .map((name) => name.charAt(0).toUpperCase())
+      .join('')
+      .slice(0, 2)
   })
 
-  const userDisplayName = computed(() => 
-    currentUser.value?.full_name || currentUser.value?.username || 'User'
+  const userDisplayName = computed(
+    () => currentUser.value?.full_name || currentUser.value?.username || 'User',
   )
 
   // Actions
@@ -74,7 +75,7 @@ export const useUserStore = defineStore('user', () => {
   const setUser = (user: User | null) => {
     currentUser.value = user
     isAuthenticated.value = !!user
-    
+
     // Store user info in localStorage for persistence
     if (user) {
       localStorage.setItem('user', JSON.stringify(user))
@@ -89,7 +90,7 @@ export const useUserStore = defineStore('user', () => {
     try {
       const storedUser = localStorage.getItem('user')
       const storedAuth = localStorage.getItem('isAuthenticated')
-      
+
       if (storedUser && storedAuth === 'true') {
         const user = JSON.parse(storedUser) as User
         currentUser.value = user
@@ -109,10 +110,10 @@ export const useUserStore = defineStore('user', () => {
     try {
       setLoadingState('loading')
       clearError()
-      
+
       const user = await userApi.getUser(userId)
       setUser(user)
-      
+
       setLoadingState('success')
       return user
     } catch (err) {
@@ -127,10 +128,10 @@ export const useUserStore = defineStore('user', () => {
     try {
       setLoadingState('loading')
       clearError()
-      
+
       const user = await userApi.createUser(userData)
       setUser(user)
-      
+
       setLoadingState('success')
       return user
     } catch (err) {
@@ -150,10 +151,10 @@ export const useUserStore = defineStore('user', () => {
     try {
       setLoadingState('loading')
       clearError()
-      
+
       const updatedUser = await userApi.updateUser(currentUser.value.id, userData)
       setUser(updatedUser)
-      
+
       setLoadingState('success')
       return updatedUser
     } catch (err) {
@@ -173,10 +174,10 @@ export const useUserStore = defineStore('user', () => {
     try {
       setLoadingState('loading')
       clearError()
-      
+
       await userApi.deleteUser(currentUser.value.id)
       logout()
-      
+
       setLoadingState('success')
       return true
     } catch (err) {
@@ -196,10 +197,10 @@ export const useUserStore = defineStore('user', () => {
     try {
       setLoadingState('loading')
       clearError()
-      
+
       const profile = await userApi.getUserProfile(currentUser.value.id)
       userProfile.value = profile
-      
+
       setLoadingState('success')
       return profile
     } catch (err) {
@@ -219,10 +220,10 @@ export const useUserStore = defineStore('user', () => {
     try {
       setLoadingState('loading')
       clearError()
-      
+
       const updatedProfile = await userApi.updateUserProfile(currentUser.value.id, profileData)
       userProfile.value = updatedProfile
-      
+
       // Also update relevant fields in current user
       if (currentUser.value) {
         currentUser.value = {
@@ -235,7 +236,7 @@ export const useUserStore = defineStore('user', () => {
         // Update localStorage
         localStorage.setItem('user', JSON.stringify(currentUser.value))
       }
-      
+
       setLoadingState('success')
       return updatedProfile
     } catch (err) {
@@ -255,9 +256,9 @@ export const useUserStore = defineStore('user', () => {
     try {
       setLoadingState('loading')
       clearError()
-      
+
       await userApi.changePassword(currentUser.value.id, passwordData)
-      
+
       setLoadingState('success')
       return true
     } catch (err) {
@@ -268,20 +269,20 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const login = async (_username: string, _password: string): Promise<boolean> => {
     // This would typically call an authentication endpoint
     // For now, we'll simulate the login process
     try {
       setLoadingState('loading')
       clearError()
-      
+
       // In a real app, you would call an auth endpoint here
       // const response = await authApi.login({ username, password })
       // const { user, token } = response
-      
+
       // For simulation purposes, we'll just set a dummy user
       // You should replace this with actual authentication logic
-      
+
       setLoadingState('success')
       return true
     } catch (err) {
@@ -297,10 +298,10 @@ export const useUserStore = defineStore('user', () => {
     userProfile.value = null
     clearError()
     setLoadingState('idle')
-    
+
     // Clear auth token
     localStorage.removeItem('auth_token')
-    
+
     // Dispatch logout event
     window.dispatchEvent(new CustomEvent('auth:logout'))
   }
@@ -308,11 +309,11 @@ export const useUserStore = defineStore('user', () => {
   const initialize = async () => {
     // Try to load user from localStorage on app startup
     const storedUser = loadUserFromStorage()
-    
+
     if (storedUser) {
       // Optionally verify the stored user is still valid
       // await fetchUser(storedUser.id)
-      
+
       // Load user profile if user exists
       await fetchUserProfile()
     }
@@ -330,7 +331,7 @@ export const useUserStore = defineStore('user', () => {
     loadingState,
     error,
     userProfile,
-    
+
     // Getters
     hasDateOfBirth,
     userLifespan,
@@ -338,7 +339,7 @@ export const useUserStore = defineStore('user', () => {
     isProfileComplete,
     userInitials,
     userDisplayName,
-    
+
     // Actions
     setUser,
     loadUserFromStorage,

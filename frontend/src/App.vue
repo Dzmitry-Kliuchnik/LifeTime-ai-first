@@ -75,7 +75,7 @@ header {
 
 main {
   flex: 1;
-  padding: 2rem 0;
+  padding: 0;
 }
 
 footer {

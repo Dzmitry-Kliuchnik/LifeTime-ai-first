@@ -11,17 +11,17 @@ vi.mock('@/utils/api', () => ({
   weekCalculationApi: {
     calculateLifeProgress: vi.fn(),
     calculateTotalWeeks: vi.fn(),
-    calculateCurrentWeek: vi.fn()
+    calculateCurrentWeek: vi.fn(),
   },
   apiUtils: {
-    getErrorMessage: vi.fn((err) => err.message || 'Unknown error')
-  }
+    getErrorMessage: vi.fn((err) => err.message || 'Unknown error'),
+  },
 }))
 
 vi.mock('@/utils/timezone', () => ({
   timezoneUtils: {
-    detectUserTimezone: vi.fn(() => 'UTC')
-  }
+    detectUserTimezone: vi.fn(() => 'UTC'),
+  },
 }))
 
 describe('LifetimeGrid', () => {
@@ -41,7 +41,7 @@ describe('LifetimeGrid', () => {
     is_verified: true,
     is_superuser: false,
     created_at: '2023-01-01T00:00:00Z',
-    updated_at: '2023-01-01T00:00:00Z'
+    updated_at: '2023-01-01T00:00:00Z',
   }
 
   const mockLifeProgress = {
@@ -55,38 +55,38 @@ describe('LifetimeGrid', () => {
     age_info: {
       years: 34,
       months: 0,
-      days: 0
+      days: 0,
     },
-    current_date: '2024-01-01'
+    current_date: '2024-01-01',
   }
 
   beforeEach(() => {
     pinia = createPinia()
     setActivePinia(pinia)
-    
+
     userStore = useUserStore()
     weekCalculationStore = useWeekCalculationStore()
-    
+
     // Mock user store state
     userStore.currentUser = mockUser
     userStore.isAuthenticated = true
-    
+
     // Mock week calculation store - need to set the underlying refs, not computed properties
     weekCalculationStore.lifeProgress = mockLifeProgress
     weekCalculationStore.totalWeeks = { total_weeks: mockLifeProgress.total_weeks }
-    weekCalculationStore.currentWeek = { 
+    weekCalculationStore.currentWeek = {
       current_week_index: mockLifeProgress.current_week_index,
-      weeks_lived: mockLifeProgress.weeks_lived
+      weeks_lived: mockLifeProgress.weeks_lived,
     }
-    
+
     // Mock the calculateLifeProgress method to resolve immediately and update store state
     weekCalculationStore.calculateLifeProgress = vi.fn().mockImplementation(async () => {
       // Simulate the store being updated with the underlying refs
       weekCalculationStore.lifeProgress = mockLifeProgress
       weekCalculationStore.totalWeeks = { total_weeks: mockLifeProgress.total_weeks }
-      weekCalculationStore.currentWeek = { 
+      weekCalculationStore.currentWeek = {
         current_week_index: mockLifeProgress.current_week_index,
-        weeks_lived: mockLifeProgress.weeks_lived
+        weeks_lived: mockLifeProgress.weeks_lived,
       }
       return mockLifeProgress
     })
@@ -102,12 +102,12 @@ describe('LifetimeGrid', () => {
     it('renders the grid container with correct structure', async () => {
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
-        }
+          plugins: [pinia],
+        },
       })
 
       // Wait for the component to load and process async operations
-      await new Promise(resolve => setTimeout(resolve, 10))
+      await new Promise((resolve) => setTimeout(resolve, 10))
       await nextTick()
 
       expect(wrapper.find('.lifetime-grid-container').exists()).toBe(true)
@@ -120,12 +120,12 @@ describe('LifetimeGrid', () => {
     it('renders correct number of week cells', async () => {
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
-        }
+          plugins: [pinia],
+        },
       })
 
       // Wait for the component to load and process async operations
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
       await nextTick()
       await nextTick() // Extra tick to ensure all computed properties update
 
@@ -143,19 +143,19 @@ describe('LifetimeGrid', () => {
     it('applies correct CSS custom properties', async () => {
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
-        }
+          plugins: [pinia],
+        },
       })
 
       // Wait for component to fully render with data
-      await new Promise(resolve => setTimeout(resolve, 10))
+      await new Promise((resolve) => setTimeout(resolve, 10))
       await nextTick()
 
       const gridContainer = wrapper.find('.lifetime-grid')
       expect(gridContainer.exists()).toBe(true) // Ensure element exists first
-      
+
       const style = gridContainer.attributes('style')
-      
+
       expect(style).toContain('--weeks-per-row: 52')
       expect(style).toContain('--cell-size: 12px')
       expect(style).toContain('--total-rows:')
@@ -165,22 +165,22 @@ describe('LifetimeGrid', () => {
       // Create a fresh pinia instance without pre-populated data for this test
       const testPinia = createPinia()
       setActivePinia(testPinia)
-      
+
       const testWeekStore = useWeekCalculationStore()
       const testUserStore = useUserStore()
-      
+
       // Set user but not week calculation data to trigger loading
       testUserStore.currentUser = mockUser
       testUserStore.isAuthenticated = true
-      
+
       // Mock the method to not immediately resolve
       const neverResolvePromise = new Promise(() => {}) // Never resolves
       testWeekStore.calculateLifeProgress = vi.fn().mockImplementation(() => neverResolvePromise)
-      
+
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [testPinia]
-        }
+          plugins: [testPinia],
+        },
       })
 
       await nextTick()
@@ -192,11 +192,11 @@ describe('LifetimeGrid', () => {
 
     it('shows error state when no date of birth', async () => {
       userStore.currentUser = { ...mockUser, date_of_birth: null }
-      
+
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
-        }
+          plugins: [pinia],
+        },
       })
 
       await nextTick()
@@ -209,8 +209,8 @@ describe('LifetimeGrid', () => {
     beforeEach(async () => {
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
-        }
+          plugins: [pinia],
+        },
       })
       await nextTick()
     })
@@ -223,10 +223,10 @@ describe('LifetimeGrid', () => {
     it('correctly identifies current week', () => {
       const currentWeekCells = wrapper.findAll('.week-current')
       expect(currentWeekCells.length).toBe(1)
-      
+
       const currentWeekCell = currentWeekCells[0]
       expect(currentWeekCell?.attributes('data-week-index')).toBe(
-        mockLifeProgress.current_week_index.toString()
+        mockLifeProgress.current_week_index.toString(),
       )
     })
 
@@ -241,8 +241,8 @@ describe('LifetimeGrid', () => {
     beforeEach(async () => {
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
-        }
+          plugins: [pinia],
+        },
       })
       await nextTick()
     })
@@ -265,7 +265,7 @@ describe('LifetimeGrid', () => {
 
     it('applies highlighted week styling', async () => {
       await wrapper.setProps({ highlightedWeeks: [100, 200] })
-      
+
       const highlightedWeek = wrapper.find('[data-week-index="100"]')
       expect(highlightedWeek.classes()).toContain('is-highlighted')
     })
@@ -275,8 +275,8 @@ describe('LifetimeGrid', () => {
     beforeEach(async () => {
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
-        }
+          plugins: [pinia],
+        },
       })
       await nextTick()
     })
@@ -296,7 +296,7 @@ describe('LifetimeGrid', () => {
       const weekWithBorder = wrapper.find('.is-birthday')
       if (weekWithBorder.exists()) {
         const classes = weekWithBorder.classes()
-        const hasBorderPriority = classes.some(cls => cls.startsWith('border-priority-'))
+        const hasBorderPriority = classes.some((cls) => cls.startsWith('border-priority-'))
         expect(hasBorderPriority).toBe(true)
       }
     })
@@ -306,8 +306,8 @@ describe('LifetimeGrid', () => {
     beforeEach(async () => {
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
-        }
+          plugins: [pinia],
+        },
       })
       await nextTick()
     })
@@ -327,7 +327,7 @@ describe('LifetimeGrid', () => {
     it('provides meaningful aria-labels for week cells', () => {
       const weekCell = wrapper.find('.week-cell')
       const ariaLabel = weekCell.attributes('aria-label')
-      
+
       expect(ariaLabel).toContain('Week')
       expect(ariaLabel).toContain('Year')
       expect(ariaLabel).toMatch(/(completed|current|future) week/)
@@ -342,11 +342,11 @@ describe('LifetimeGrid', () => {
 
     it('handles keyboard navigation correctly', async () => {
       const gridContainer = wrapper.find('.lifetime-grid')
-      
+
       // Simulate arrow key navigation
       await gridContainer.trigger('keydown', { key: 'ArrowRight' })
       await nextTick()
-      
+
       // Should have moved selection
       expect(wrapper.vm.selectedWeekIndex).toBeTruthy()
     })
@@ -356,11 +356,11 @@ describe('LifetimeGrid', () => {
     beforeEach(async () => {
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
+          plugins: [pinia],
         },
         props: {
-          interactive: true
-        }
+          interactive: true,
+        },
       })
       await nextTick()
     })
@@ -368,7 +368,7 @@ describe('LifetimeGrid', () => {
     it('emits weekClick event when cell is clicked', async () => {
       const weekCell = wrapper.find('[data-week-index="100"]')
       await weekCell.trigger('click')
-      
+
       const emittedEvents = wrapper.emitted('weekClick')
       expect(emittedEvents).toBeTruthy()
       expect(emittedEvents?.[0]).toEqual([100, expect.any(Object)])
@@ -377,7 +377,7 @@ describe('LifetimeGrid', () => {
     it('emits weekHover event when cell is hovered', async () => {
       const weekCell = wrapper.find('[data-week-index="100"]')
       await weekCell.trigger('mouseenter')
-      
+
       const emittedEvents = wrapper.emitted('weekHover')
       expect(emittedEvents).toBeTruthy()
       expect(emittedEvents?.[0]).toEqual([100, expect.any(Object)])
@@ -386,7 +386,7 @@ describe('LifetimeGrid', () => {
     it('emits weekFocus event when cell is focused', async () => {
       const weekCell = wrapper.find('[data-week-index="100"]')
       await weekCell.trigger('focus')
-      
+
       const emittedEvents = wrapper.emitted('weekFocus')
       expect(emittedEvents).toBeTruthy()
       expect(emittedEvents?.[0]).toEqual([100, expect.any(Object)])
@@ -395,7 +395,7 @@ describe('LifetimeGrid', () => {
     it('handles selection state correctly', async () => {
       const weekCell = wrapper.find('[data-week-index="100"]')
       await weekCell.trigger('click')
-      
+
       expect(wrapper.vm.selectedWeekIndex).toBe(100)
       expect(weekCell.classes()).toContain('is-selected')
     })
@@ -403,7 +403,7 @@ describe('LifetimeGrid', () => {
     it('handles hover state correctly', async () => {
       const weekCell = wrapper.find('[data-week-index="100"]')
       await weekCell.trigger('mouseenter')
-      
+
       expect(wrapper.vm.hoveredWeekIndex).toBe(100)
       expect(weekCell.classes()).toContain('is-hovered')
     })
@@ -413,14 +413,14 @@ describe('LifetimeGrid', () => {
     beforeEach(async () => {
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
+          plugins: [pinia],
         },
         props: {
-          interactive: true
-        }
+          interactive: true,
+        },
       })
       await nextTick()
-      
+
       // Set initial selection
       wrapper.vm.selectedWeekIndex = 100
       await nextTick()
@@ -429,59 +429,59 @@ describe('LifetimeGrid', () => {
     it('navigates right with ArrowRight', async () => {
       const gridContainer = wrapper.find('.lifetime-grid')
       await gridContainer.trigger('keydown', { key: 'ArrowRight' })
-      
+
       expect(wrapper.vm.selectedWeekIndex).toBe(101)
     })
 
     it('navigates left with ArrowLeft', async () => {
       const gridContainer = wrapper.find('.lifetime-grid')
       await gridContainer.trigger('keydown', { key: 'ArrowLeft' })
-      
+
       expect(wrapper.vm.selectedWeekIndex).toBe(99)
     })
 
     it('navigates down with ArrowDown', async () => {
       const gridContainer = wrapper.find('.lifetime-grid')
       await gridContainer.trigger('keydown', { key: 'ArrowDown' })
-      
+
       expect(wrapper.vm.selectedWeekIndex).toBe(152) // 100 + 52
     })
 
     it('navigates up with ArrowUp', async () => {
       wrapper.vm.selectedWeekIndex = 152 // Set to a position where up navigation is possible
       await nextTick()
-      
+
       const gridContainer = wrapper.find('.lifetime-grid')
       await gridContainer.trigger('keydown', { key: 'ArrowUp' })
-      
+
       expect(wrapper.vm.selectedWeekIndex).toBe(100) // 152 - 52
     })
 
     it('goes to first week with Home', async () => {
       const gridContainer = wrapper.find('.lifetime-grid')
       await gridContainer.trigger('keydown', { key: 'Home' })
-      
+
       expect(wrapper.vm.selectedWeekIndex).toBe(0)
     })
 
     it('goes to last week with End', async () => {
       const gridContainer = wrapper.find('.lifetime-grid')
       await gridContainer.trigger('keydown', { key: 'End' })
-      
+
       expect(wrapper.vm.selectedWeekIndex).toBe(mockLifeProgress.total_weeks - 1)
     })
 
     it('jumps to current week with c key', async () => {
       const gridContainer = wrapper.find('.lifetime-grid')
       await gridContainer.trigger('keydown', { key: 'c' })
-      
+
       expect(wrapper.vm.selectedWeekIndex).toBe(mockLifeProgress.current_week_index)
     })
 
     it('clears selection with Escape', async () => {
       const gridContainer = wrapper.find('.lifetime-grid')
       await gridContainer.trigger('keydown', { key: 'Escape' })
-      
+
       expect(wrapper.vm.selectedWeekIndex).toBeNull()
     })
   })
@@ -497,15 +497,15 @@ describe('LifetimeGrid', () => {
 
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
+          plugins: [pinia],
         },
         props: {
-          cellSize: 8 // Smaller cell size for mobile
-        }
+          cellSize: 8, // Smaller cell size for mobile
+        },
       })
 
       // Wait for component to load and render with data
-      await new Promise(resolve => setTimeout(resolve, 10))
+      await new Promise((resolve) => setTimeout(resolve, 10))
       await nextTick()
 
       const gridContainer = wrapper.find('.lifetime-grid')
@@ -517,15 +517,15 @@ describe('LifetimeGrid', () => {
     it('adjusts max width based on props', async () => {
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
+          plugins: [pinia],
         },
         props: {
-          maxWidth: '800px'
-        }
+          maxWidth: '800px',
+        },
       })
 
       // Wait for component to load and render with data
-      await new Promise(resolve => setTimeout(resolve, 10))
+      await new Promise((resolve) => setTimeout(resolve, 10))
       await nextTick()
 
       const gridContainer = wrapper.find('.lifetime-grid')
@@ -539,42 +539,42 @@ describe('LifetimeGrid', () => {
     it('respects interactive prop', async () => {
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
+          plugins: [pinia],
         },
         props: {
-          interactive: false
-        }
+          interactive: false,
+        },
       })
 
       // Wait for component to load and render with data
-      await new Promise(resolve => setTimeout(resolve, 10))
+      await new Promise((resolve) => setTimeout(resolve, 10))
       await nextTick()
 
       const weekCell = wrapper.find('[data-week-index="100"]')
       expect(weekCell.exists()).toBe(true) // Ensure cell exists
       await weekCell.trigger('click')
-      
+
       // Should not emit events when not interactive
       expect(wrapper.emitted('weekClick')).toBeFalsy()
     })
 
     it('applies highlighted weeks correctly', async () => {
       const highlightedWeeks = [100, 200, 300]
-      
+
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
+          plugins: [pinia],
         },
         props: {
-          highlightedWeeks
-        }
+          highlightedWeeks,
+        },
       })
 
       // Wait for component to load and render with data
-      await new Promise(resolve => setTimeout(resolve, 10))
+      await new Promise((resolve) => setTimeout(resolve, 10))
       await nextTick()
 
-      highlightedWeeks.forEach(weekIndex => {
+      highlightedWeeks.forEach((weekIndex) => {
         const weekCell = wrapper.find(`[data-week-index="${weekIndex}"]`)
         expect(weekCell.exists()).toBe(true) // Ensure cell exists
         expect(weekCell.classes()).toContain('is-highlighted')
@@ -584,11 +584,11 @@ describe('LifetimeGrid', () => {
     it('shows/hides notes based on showNotes prop', async () => {
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
+          plugins: [pinia],
         },
         props: {
-          showNotes: false
-        }
+          showNotes: false,
+        },
       })
 
       await nextTick()
@@ -602,15 +602,15 @@ describe('LifetimeGrid', () => {
   describe('Error Handling', () => {
     it('shows retry button on error', async () => {
       weekCalculationStore.calculateLifeProgress = vi.fn().mockRejectedValue(new Error('API Error'))
-      
+
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
-        }
+          plugins: [pinia],
+        },
       })
 
       await nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100)) // Wait for async error
+      await new Promise((resolve) => setTimeout(resolve, 100)) // Wait for async error
 
       expect(wrapper.find('.error-state').exists()).toBe(true)
       expect(wrapper.find('.retry-button').exists()).toBe(true)
@@ -618,24 +618,25 @@ describe('LifetimeGrid', () => {
 
     it('retries loading when retry button is clicked', async () => {
       // Create a spy that fails once, then succeeds
-      const calculateSpy = vi.fn()
+      const calculateSpy = vi
+        .fn()
         .mockRejectedValueOnce(new Error('API Error'))
         .mockResolvedValueOnce(mockLifeProgress)
-      
+
       weekCalculationStore.calculateLifeProgress = calculateSpy
-      
+
       wrapper = mount(LifetimeGrid, {
         global: {
-          plugins: [pinia]
-        }
+          plugins: [pinia],
+        },
       })
 
       await nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
 
       const retryButton = wrapper.find('.retry-button')
       expect(retryButton.exists()).toBe(true)
-      
+
       await retryButton.trigger('click')
       await nextTick()
 

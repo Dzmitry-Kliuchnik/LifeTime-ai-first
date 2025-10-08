@@ -69,13 +69,13 @@ describe('LifetimeGrid Utilities', () => {
     it('assigns correct priorities for different event types', () => {
       // User highlights should have highest priority
       expect(100).toBeGreaterThan(20) // highlight > milestone
-      
+
       // Milestones should have higher priority than regular birthdays
       expect(20).toBeGreaterThan(10) // milestone > birthday
-      
+
       // Birthdays should have higher priority than year starts
       expect(10).toBeGreaterThan(5) // birthday > year start
-      
+
       // Year starts should have higher priority than quarters
       expect(5).toBeGreaterThan(2) // year start > quarter
     })
@@ -86,9 +86,9 @@ describe('LifetimeGrid Utilities', () => {
       const yearStartPriority = 5
       const combinedEvents = [
         { type: 'birthday', priority: birthdayPriority },
-        { type: 'yearStart', priority: yearStartPriority }
+        { type: 'yearStart', priority: yearStartPriority },
       ]
-      
+
       const sortedEvents = [...combinedEvents].sort((a, b) => b.priority - a.priority)
       expect(sortedEvents[0]?.type).toBe('birthday')
       expect(sortedEvents[1]?.type).toBe('yearStart')
@@ -100,7 +100,7 @@ describe('LifetimeGrid Utilities', () => {
       const pastOpacity = 0.8
       const currentOpacity = 1.0
       const futureOpacity = 0.4
-      
+
       expect(pastOpacity).toBeGreaterThan(futureOpacity)
       expect(currentOpacity).toBeGreaterThan(pastOpacity)
       expect(currentOpacity).toBe(1.0) // Current week always fully opaque
@@ -110,7 +110,7 @@ describe('LifetimeGrid Utilities', () => {
       const baseOpacity = 0.4 // Future week base
       const withSpecialDate = Math.min(1, baseOpacity + 0.2)
       const withNotes = Math.min(1, baseOpacity + 0.1)
-      
+
       expect(withSpecialDate).toBeGreaterThan(baseOpacity)
       expect(withNotes).toBeGreaterThan(baseOpacity)
       expect(withSpecialDate).toBeGreaterThan(withNotes)
@@ -122,17 +122,17 @@ describe('LifetimeGrid Utilities', () => {
       const weekIndex = 156 // 3rd year, week 0
       const year = Math.floor(weekIndex / 52) + 1
       const weekInYear = (weekIndex % 52) + 1
-      
+
       const expectedPattern = /Week \d+, Year \d+ of life, Week \d+ of year/
       const sampleLabel = `Week ${weekIndex + 1}, Year ${year} of life, Week ${weekInYear} of year`
-      
+
       expect(sampleLabel).toMatch(expectedPattern)
     })
 
     it('includes appropriate state descriptions', () => {
       const states = ['completed week', 'current week', 'upcoming week']
-      
-      states.forEach(state => {
+
+      states.forEach((state) => {
         expect(state).toMatch(/(completed|current|upcoming) week/)
       })
     })
@@ -143,14 +143,14 @@ describe('LifetimeGrid Utilities', () => {
       const totalWeeks = 4160 // 80 years
       const weeksPerRow = 52
       const expectedRows = Math.ceil(totalWeeks / weeksPerRow)
-      
+
       expect(expectedRows).toBe(80)
     })
 
     it('handles different cell sizes', () => {
       const cellSizes = [8, 10, 12, 16]
-      
-      cellSizes.forEach(size => {
+
+      cellSizes.forEach((size) => {
         expect(size).toBeGreaterThan(0)
         expect(size).toBeLessThanOrEqual(20) // Reasonable maximum
       })
@@ -160,7 +160,7 @@ describe('LifetimeGrid Utilities', () => {
       const desktopWeeksPerRow = 52
       const tabletWeeksPerRow = 26 // Half for tablets
       const mobileWeeksPerRow = 13 // Quarter for mobile
-      
+
       expect(tabletWeeksPerRow).toBe(desktopWeeksPerRow / 2)
       expect(mobileWeeksPerRow).toBe(desktopWeeksPerRow / 4)
     })
@@ -170,26 +170,26 @@ describe('LifetimeGrid Utilities', () => {
     it('calculates correct navigation distances', () => {
       const weeksPerRow = 52
       const currentIndex = 100
-      
+
       // Arrow key movements
       expect(currentIndex + 1).toBe(101) // Right
-      expect(currentIndex - 1).toBe(99)  // Left
+      expect(currentIndex - 1).toBe(99) // Left
       expect(currentIndex + weeksPerRow).toBe(152) // Down
-      expect(currentIndex - weeksPerRow).toBe(48)  // Up
-      
+      expect(currentIndex - weeksPerRow).toBe(48) // Up
+
       // Page movements (10 rows)
-      expect(currentIndex + (weeksPerRow * 10)).toBe(620) // Page Down
-      expect(currentIndex - (weeksPerRow * 10)).toBe(-420) // Page Up (would be clamped)
+      expect(currentIndex + weeksPerRow * 10).toBe(620) // Page Down
+      expect(currentIndex - weeksPerRow * 10).toBe(-420) // Page Up (would be clamped)
     })
 
     it('handles boundary conditions', () => {
       const totalWeeks = 4160
       const weeksPerRow = 52
-      
+
       // First week
       expect(Math.max(0 - 1, 0)).toBe(0) // Can't go before first week
       expect(Math.max(0 - weeksPerRow, 0)).toBe(0) // Can't go up from first row
-      
+
       // Last week
       const lastIndex = totalWeeks - 1
       expect(Math.min(lastIndex + 1, totalWeeks - 1)).toBe(lastIndex) // Can't go past last week
@@ -202,16 +202,20 @@ describe('LifetimeGrid Utilities', () => {
 function getOrdinalSuffix(num: number): string {
   const lastDigit = num % 10
   const lastTwoDigits = num % 100
-  
+
   if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
     return 'th'
   }
-  
+
   switch (lastDigit) {
-    case 1: return 'st'
-    case 2: return 'nd'
-    case 3: return 'rd'
-    default: return 'th'
+    case 1:
+      return 'st'
+    case 2:
+      return 'nd'
+    case 3:
+      return 'rd'
+    default:
+      return 'th'
   }
 }
 

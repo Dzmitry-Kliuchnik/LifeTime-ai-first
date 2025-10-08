@@ -49,17 +49,43 @@ class Settings(BaseSettings):
 
     # CORS settings
     cors_origins: list[str] = Field(
-        default=["http://localhost:3000", "http://127.0.0.1:3000"],
+        default=[
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:5173",  # Vite dev server default
+            "http://127.0.0.1:5173",
+            "http://localhost:5174",  # Vite dev server alternate port
+            "http://127.0.0.1:5174",
+            "http://localhost:8080",  # Vue CLI dev server default
+            "http://127.0.0.1:8080",
+            "http://localhost:4173",  # Vite preview server default
+            "http://127.0.0.1:4173",
+        ],
         description="Allowed CORS origins",
     )
     cors_credentials: bool = Field(
         default=True, description="Allow credentials in CORS requests"
     )
     cors_methods: list[str] = Field(
-        default=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        default=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
         description="Allowed CORS methods",
     )
-    cors_headers: list[str] = Field(default=["*"], description="Allowed CORS headers")
+    cors_headers: list[str] = Field(
+        default=[
+            "*",
+            "Accept",
+            "Accept-Language",
+            "Content-Language",
+            "Content-Type",
+            "Authorization",
+            "Origin",
+            "User-Agent",
+            "X-Requested-With",
+            "Access-Control-Request-Method",
+            "Access-Control-Request-Headers",
+        ],
+        description="Allowed CORS headers",
+    )
 
     # Security settings
     secret_key: str = Field(

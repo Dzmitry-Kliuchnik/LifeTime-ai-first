@@ -1,7 +1,7 @@
 // Week calculation store for managing life week calculations and progress
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { 
+import type {
   WeekCalculationRequest,
   CurrentWeekRequest,
   WeekSummaryRequest,
@@ -9,7 +9,7 @@ import type {
   CurrentWeekResponse,
   WeekSummaryResponse,
   LifeProgressResponse,
-  LoadingState
+  LoadingState,
 } from '@/types'
 import { WeekType } from '@/types'
 import { weekCalculationApi, apiUtils } from '@/utils/api'
@@ -31,31 +31,21 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
   const calculationCache = ref<Map<string, unknown>>(new Map())
 
   // Getters
-  const currentWeekIndex = computed(() => 
-    currentWeek.value?.current_week_index ?? null
-  )
+  const currentWeekIndex = computed(() => currentWeek.value?.current_week_index ?? null)
 
-  const totalLifetimeWeeks = computed(() => 
-    totalWeeks.value?.total_weeks ?? null
-  )
+  const totalLifetimeWeeks = computed(() => totalWeeks.value?.total_weeks ?? null)
 
-  const progressPercentage = computed(() => 
-    lifeProgress.value?.progress_percentage ?? null
-  )
+  const progressPercentage = computed(() => lifeProgress.value?.progress_percentage ?? null)
 
-  const weeksLived = computed(() => 
-    currentWeek.value?.weeks_lived ?? null
-  )
+  const weeksLived = computed(() => currentWeek.value?.weeks_lived ?? null)
 
   const weeksRemaining = computed(() => {
     const total = totalLifetimeWeeks.value
     const lived = weeksLived.value
-    return (total && lived) ? Math.max(0, total - lived) : null
+    return total && lived ? Math.max(0, total - lived) : null
   })
 
-  const currentAge = computed(() => 
-    lifeProgress.value?.age_info ?? null
-  )
+  const currentAge = computed(() => lifeProgress.value?.age_info ?? null)
 
   const isLoading = computed(() => loadingState.value === 'loading')
   const hasError = computed(() => loadingState.value === 'error')
@@ -81,7 +71,7 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
   const getDefaultCalculationRequest = (): WeekCalculationRequest | null => {
     const userStore = useUserStore()
     const user = userStore.currentUser
-    
+
     if (!user?.date_of_birth) {
       return null
     }
@@ -89,12 +79,12 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
     return {
       date_of_birth: user.date_of_birth,
       lifespan_years: user.lifespan || 80,
-      timezone: userStore.userTimezone
+      timezone: userStore.userTimezone,
     }
   }
 
   const calculateTotalWeeks = async (
-    request?: WeekCalculationRequest
+    request?: WeekCalculationRequest,
   ): Promise<TotalWeeksResponse | null> => {
     const requestData = request || getDefaultCalculationRequest()
     if (!requestData) {
@@ -102,7 +92,10 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
       return null
     }
 
-    const cacheKey = generateCacheKey('totalWeeks', requestData as unknown as Record<string, unknown>)
+    const cacheKey = generateCacheKey(
+      'totalWeeks',
+      requestData as unknown as Record<string, unknown>,
+    )
     const cached = calculationCache.value.get(cacheKey) as TotalWeeksResponse
     if (cached) {
       totalWeeks.value = cached
@@ -112,13 +105,13 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
     try {
       setLoadingState('loading')
       clearError()
-      
+
       const response = await weekCalculationApi.calculateTotalWeeks(requestData)
       totalWeeks.value = response
-      
+
       // Cache the result
       calculationCache.value.set(cacheKey, response)
-      
+
       setLoadingState('success')
       return response
     } catch (err) {
@@ -130,12 +123,12 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
   }
 
   const calculateCurrentWeek = async (
-    request?: CurrentWeekRequest
+    request?: CurrentWeekRequest,
   ): Promise<CurrentWeekResponse | null> => {
     const userStore = useUserStore()
     const requestData = request || {
       date_of_birth: userStore.currentUser?.date_of_birth || '',
-      timezone: userStore.userTimezone
+      timezone: userStore.userTimezone,
     }
 
     if (!requestData.date_of_birth) {
@@ -143,7 +136,10 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
       return null
     }
 
-    const cacheKey = generateCacheKey('currentWeek', requestData as unknown as Record<string, unknown>)
+    const cacheKey = generateCacheKey(
+      'currentWeek',
+      requestData as unknown as Record<string, unknown>,
+    )
     const cached = calculationCache.value.get(cacheKey) as CurrentWeekResponse
     if (cached) {
       currentWeek.value = cached
@@ -153,13 +149,13 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
     try {
       setLoadingState('loading')
       clearError()
-      
+
       const response = await weekCalculationApi.calculateCurrentWeek(requestData)
       currentWeek.value = response
-      
+
       // Cache the result (with shorter TTL since it changes daily)
       calculationCache.value.set(cacheKey, response)
-      
+
       setLoadingState('success')
       return response
     } catch (err) {
@@ -172,14 +168,14 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
 
   const getWeekSummary = async (
     weekIndex: number,
-    request?: Omit<WeekSummaryRequest, 'week_index'>
+    request?: Omit<WeekSummaryRequest, 'week_index'>,
   ): Promise<WeekSummaryResponse | null> => {
     const userStore = useUserStore()
     const requestData: WeekSummaryRequest = {
       date_of_birth: userStore.currentUser?.date_of_birth || '',
       timezone: userStore.userTimezone,
       week_index: weekIndex,
-      ...request
+      ...request,
     }
 
     if (!requestData.date_of_birth) {
@@ -197,13 +193,13 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
     try {
       setLoadingState('loading')
       clearError()
-      
+
       const response = await weekCalculationApi.getWeekSummary(requestData)
       weekSummary.value = response
-      
+
       // Cache the result
       weekSummaries.value.set(weekIndex, response)
-      
+
       setLoadingState('success')
       return response
     } catch (err) {
@@ -215,7 +211,7 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
   }
 
   const calculateLifeProgress = async (
-    request?: WeekCalculationRequest
+    request?: WeekCalculationRequest,
   ): Promise<LifeProgressResponse | null> => {
     const requestData = request || getDefaultCalculationRequest()
     if (!requestData) {
@@ -223,7 +219,10 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
       return null
     }
 
-    const cacheKey = generateCacheKey('lifeProgress', requestData as unknown as Record<string, unknown>)
+    const cacheKey = generateCacheKey(
+      'lifeProgress',
+      requestData as unknown as Record<string, unknown>,
+    )
     const cached = calculationCache.value.get(cacheKey) as LifeProgressResponse
     if (cached) {
       lifeProgress.value = cached
@@ -233,13 +232,13 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
     try {
       setLoadingState('loading')
       clearError()
-      
+
       const response = await weekCalculationApi.calculateLifeProgress(requestData)
       lifeProgress.value = response
-      
+
       // Cache the result
       calculationCache.value.set(cacheKey, response)
-      
+
       setLoadingState('success')
       return response
     } catch (err) {
@@ -254,15 +253,15 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
   const calculateWeeksSinceBirthLocal = (
     dateOfBirth: string,
     timezone?: string,
-    referenceDate?: Date
+    referenceDate?: Date,
   ): number => {
     try {
       const dob = dateUtils.parseDate(dateOfBirth)
-      
+
       if (timezone) {
         return timezoneUtils.calculateWeeksSinceBirthInTimezone(dob, timezone, referenceDate)
       }
-      
+
       return dateUtils.calculateWeeksSinceBirth(dob, referenceDate)
     } catch (err) {
       console.error('Failed to calculate weeks since birth locally:', err)
@@ -274,7 +273,7 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
     dateOfBirth: string,
     weekIndex: number,
     timezone?: string,
-    referenceDate?: Date
+    referenceDate?: Date,
   ): WeekType => {
     try {
       const dob = dateUtils.parseDate(dateOfBirth)
@@ -287,7 +286,7 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
 
   const getWeekDateRangeLocal = (
     dateOfBirth: string,
-    weekIndex: number
+    weekIndex: number,
   ): { start: Date; end: Date } | null => {
     try {
       const dob = dateUtils.parseDate(dateOfBirth)
@@ -300,16 +299,16 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
 
   // Batch operations
   const getMultipleWeekSummaries = async (
-    weekIndices: number[]
+    weekIndices: number[],
   ): Promise<Map<number, WeekSummaryResponse>> => {
     const results = new Map<number, WeekSummaryResponse>()
-    
+
     // Process in parallel with limited concurrency
     const batchSize = 5
     for (let i = 0; i < weekIndices.length; i += batchSize) {
       const batch = weekIndices.slice(i, i + batchSize)
-      const promises = batch.map(weekIndex => getWeekSummary(weekIndex))
-      
+      const promises = batch.map((weekIndex) => getWeekSummary(weekIndex))
+
       const batchResults = await Promise.allSettled(promises)
       batchResults.forEach((result, index) => {
         if (result.status === 'fulfilled' && result.value) {
@@ -317,7 +316,7 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
         }
       })
     }
-    
+
     return results
   }
 
@@ -330,11 +329,7 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
 
     try {
       // Calculate basic information in parallel
-      await Promise.all([
-        calculateTotalWeeks(),
-        calculateCurrentWeek(),
-        calculateLifeProgress()
-      ])
+      await Promise.all([calculateTotalWeeks(), calculateCurrentWeek(), calculateLifeProgress()])
     } catch (err) {
       console.error('Failed to initialize week calculations:', err)
     }
@@ -384,7 +379,7 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
       previousWeek: Math.max(0, currentWeekIndex - 1),
       nextWeek: Math.min(total - 1, currentWeekIndex + 1),
       firstWeek: 0,
-      lastWeek: total - 1
+      lastWeek: total - 1,
     }
   }
 
@@ -397,7 +392,7 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
     weekSummaries,
     loadingState,
     error,
-    
+
     // Getters
     currentWeekIndex,
     totalLifetimeWeeks,
@@ -407,21 +402,21 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
     currentAge,
     isLoading,
     hasError,
-    
+
     // Actions
     calculateTotalWeeks,
     calculateCurrentWeek,
     getWeekSummary,
     calculateLifeProgress,
-    
+
     // Local calculations
     calculateWeeksSinceBirthLocal,
     getWeekTypeLocal,
     getWeekDateRangeLocal,
-    
+
     // Batch operations
     getMultipleWeekSummaries,
-    
+
     // Utilities
     initializeForUser,
     refresh,

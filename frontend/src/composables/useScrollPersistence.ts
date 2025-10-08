@@ -29,10 +29,10 @@ export function useScrollPersistence(options: ScrollPersistenceOptions) {
 
   // Current scroll position
   const scrollPosition = ref<ScrollPosition>({ top: 0, left: 0, timestamp: 0 })
-  
+
   // Container element reference
   const containerRef = ref<HTMLElement>()
-  
+
   // Debounce timeout
   let saveTimeout: number | undefined
 
@@ -75,7 +75,7 @@ export function useScrollPersistence(options: ScrollPersistenceOptions) {
     const position: ScrollPosition = {
       top: target.scrollTop,
       left: target.scrollLeft,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     }
 
     scrollPosition.value = position
@@ -153,7 +153,7 @@ export function useScrollPersistence(options: ScrollPersistenceOptions) {
     if (saveTimeout) {
       clearTimeout(saveTimeout)
     }
-    
+
     if (containerRef.value) {
       containerRef.value.removeEventListener('scroll', handleScroll)
     }
@@ -165,7 +165,7 @@ export function useScrollPersistence(options: ScrollPersistenceOptions) {
       const position: ScrollPosition = {
         top: containerRef.value.scrollTop,
         left: containerRef.value.scrollLeft,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       }
       saveScrollPosition(position)
     }
@@ -198,16 +198,16 @@ export function useScrollPersistence(options: ScrollPersistenceOptions) {
   return {
     // Template refs
     containerRef,
-    
+
     // State
     scrollPosition,
-    
+
     // Methods
     restoreScrollPosition,
     clearScrollPosition,
     setScrollPosition,
     saveScrollPosition,
-    loadScrollPosition
+    loadScrollPosition,
   }
 }
 
@@ -229,18 +229,22 @@ export function useGridScrollPersistence(options: GridScrollPersistenceOptions) 
   }
 
   // Save grid-specific position
-  const saveGridPosition = (position: ScrollPosition, selectedIndex?: number, totalItems?: number) => {
+  const saveGridPosition = (
+    position: ScrollPosition,
+    selectedIndex?: number,
+    totalItems?: number,
+  ) => {
     const gridPosition: GridScrollPosition = {
       ...position,
       selectedIndex,
-      totalItems
+      totalItems,
     }
 
     try {
       const storageKey = `scroll-position-${options.key}`
       const storage = options.storage === 'sessionStorage' ? sessionStorage : localStorage
       storage.setItem(storageKey, JSON.stringify(gridPosition))
-      
+
       if (options.debug) {
         console.log(`Saved grid scroll position for ${options.key}:`, gridPosition)
       }
@@ -257,18 +261,22 @@ export function useGridScrollPersistence(options: GridScrollPersistenceOptions) 
       const storageKey = `scroll-position-${options.key}`
       const storage = options.storage === 'sessionStorage' ? sessionStorage : localStorage
       const saved = storage.getItem(storageKey)
-      
+
       if (saved) {
         const position = JSON.parse(saved) as GridScrollPosition
-        
+
         // Validate that the position is still relevant
-        if (options.totalItems && position.totalItems && position.totalItems !== options.totalItems) {
+        if (
+          options.totalItems &&
+          position.totalItems &&
+          position.totalItems !== options.totalItems
+        ) {
           if (options.debug) {
             console.log(`Grid size changed, ignoring saved position for ${options.key}`)
           }
           return null
         }
-        
+
         if (options.debug) {
           console.log(`Loaded grid scroll position for ${options.key}:`, position)
         }
@@ -291,10 +299,10 @@ export function useGridScrollPersistence(options: GridScrollPersistenceOptions) 
 
   return {
     ...basePersistence,
-    
+
     // Grid-specific methods
     saveGridPosition,
     loadGridPosition,
-    scrollToItem
+    scrollToItem,
   }
 }

@@ -19,7 +19,7 @@ interface Props {
 // Props are automatically available in template
 withDefaults(defineProps<Props>(), {
   title: 'Hello World',
-  message: 'Welcome to Vue 3 + TypeScript + Vite'
+  message: 'Welcome to Vue 3 + TypeScript + Vite',
 })
 
 const count = ref(0)
@@ -28,7 +28,7 @@ const loading = ref(false)
 const increment = async () => {
   loading.value = true
   // Simulate async operation
-  await new Promise(resolve => setTimeout(resolve, 500))
+  await new Promise((resolve) => setTimeout(resolve, 500))
   count.value++
   loading.value = false
 }

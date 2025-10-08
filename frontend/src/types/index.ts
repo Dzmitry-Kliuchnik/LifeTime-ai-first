@@ -18,7 +18,7 @@ export type Theme = 'light' | 'dark' | 'auto'
 export enum WeekType {
   PAST = 'past',
   CURRENT = 'current',
-  FUTURE = 'future'
+  FUTURE = 'future',
 }
 
 export interface AgeInfo {

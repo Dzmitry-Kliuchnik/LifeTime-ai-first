@@ -184,6 +184,88 @@ async def calculate_life_progress_endpoint(
         return handle_week_calculation_error(e)
 
 
+@week_router.get(
+    "/life-progress",
+    response_model=LifeProgressResponse,
+    summary="Calculate complete life progress (GET)",
+    description="Calculate comprehensive life progress information using query parameters. "
+    "This endpoint provides the same functionality as POST /life-progress but uses query parameters for easier integration.",
+    responses={
+        400: {"model": ErrorResponse, "description": "Invalid query parameters"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+    },
+    tags=["week-calculation"],
+    openapi_extra={
+        "examples": {
+            "basic": {
+                "summary": "Basic life progress",
+                "description": "Calculate life progress for someone born in 1990 with 80-year lifespan",
+                "value": {
+                    "date_of_birth": "1990-01-15",
+                    "lifespan_years": 80,
+                    "timezone": "UTC",
+                },
+            },
+            "with_timezone": {
+                "summary": "With timezone",
+                "description": "Calculate life progress with specific timezone",
+                "value": {
+                    "date_of_birth": "1985-06-20",
+                    "lifespan_years": 90,
+                    "timezone": "America/New_York",
+                },
+            },
+        }
+    },
+)
+async def get_life_progress(
+    date_of_birth: date = Query(
+        ..., description="Date of birth in YYYY-MM-DD format", example="1990-01-15"
+    ),
+    lifespan_years: int = Query(
+        80, ge=1, le=150, description="Expected lifespan in years", example=80
+    ),
+    timezone: str = Query(
+        "UTC",
+        description="Timezone for current time calculation (e.g., 'America/New_York', 'Europe/London')",
+        example="UTC",
+    ),
+) -> LifeProgressResponse:
+    """
+    Calculate comprehensive life progress information using query parameters.
+
+    This endpoint calculates complete life progress including current week, progress percentage,
+    and detailed statistics. It combines functionality from current week and total weeks
+    calculations to provide a comprehensive view of life progress.
+
+    Parameters:
+    - **date_of_birth**: Date of birth (YYYY-MM-DD format)
+    - **lifespan_years**: Expected lifespan in years (1-150)
+    - **timezone**: Timezone identifier (e.g., 'UTC', 'America/New_York', 'Europe/London')
+
+    Returns comprehensive life progress information including:
+    - Current week index and total weeks lived
+    - Total expected weeks in lifespan
+    - Progress percentage and time remaining
+    - Detailed statistics and milestones
+    """
+    try:
+        # Validate date of birth
+        if date_of_birth > date.today():
+            raise ValueError(FUTURE_DATE_ERROR)
+        if date_of_birth.year < 1900:
+            raise ValueError(MIN_YEAR_ERROR)
+
+        progress = WeekCalculationService.calculate_life_progress(
+            date_of_birth, lifespan_years, timezone
+        )
+
+        return LifeProgressResponse(**progress)
+    except Exception as e:
+        return handle_week_calculation_error(e)
+
+
 # GET endpoints with query parameters
 
 

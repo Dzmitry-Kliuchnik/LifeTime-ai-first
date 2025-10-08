@@ -7,6 +7,16 @@ import type { Component } from 'vue'
 import LifetimeGrid from './LifetimeGrid.vue'
 import VirtualizedLifetimeGrid from './VirtualizedLifetimeGrid.vue'
 
+// Extend Navigator interface for performance detection
+declare global {
+  interface Navigator {
+    deviceMemory?: number
+    connection?: {
+      effectiveType?: string
+    }
+  }
+}
+
 export interface GridIntegrationOptions {
   /** Enable virtualization (can be controlled by feature flag) */
   useVirtualization?: boolean
@@ -29,15 +39,12 @@ export interface GridFeatures {
 /**
  * Composable for managing grid component selection and feature flags
  */
-export function useGridIntegration(
-  totalWeeks: number,
-  options: GridIntegrationOptions = {}
-) {
+export function useGridIntegration(totalWeeks: number, options: GridIntegrationOptions = {}) {
   const {
     useVirtualization = true,
     virtualizationThreshold = 1000,
     performanceMode = 'auto',
-    debug = false
+    debug = false,
   } = options
 
   // Performance detection
@@ -46,7 +53,7 @@ export function useGridIntegration(
     if (typeof navigator !== 'undefined') {
       return (
         navigator.hardwareConcurrency <= 2 ||
-        navigator.deviceMemory <= 2 ||
+        (navigator.deviceMemory && navigator.deviceMemory <= 2) ||
         navigator.connection?.effectiveType === 'slow-2g' ||
         navigator.connection?.effectiveType === '2g'
       )
@@ -58,12 +65,12 @@ export function useGridIntegration(
   const shouldUseVirtualization = computed(() => {
     if (performanceMode === 'compatibility') return false
     if (performanceMode === 'performance') return true
-    
+
     // Auto mode: use virtualization based on various factors
     if (!useVirtualization) return false
     if (totalWeeks < virtualizationThreshold) return false
     if (isLowEndDevice.value && totalWeeks < virtualizationThreshold * 2) return false
-    
+
     return true
   })
 
@@ -73,13 +80,15 @@ export function useGridIntegration(
   })
 
   // Feature availability
-  const features = computed((): GridFeatures => ({
-    virtualScrolling: shouldUseVirtualization.value,
-    lazyLoading: shouldUseVirtualization.value,
-    scrollPersistence: shouldUseVirtualization.value,
-    responsiveDesign: true, // Both components support this
-    performanceMetrics: shouldUseVirtualization.value && debug
-  }))
+  const features = computed(
+    (): GridFeatures => ({
+      virtualScrolling: shouldUseVirtualization.value,
+      lazyLoading: shouldUseVirtualization.value,
+      scrollPersistence: shouldUseVirtualization.value,
+      responsiveDesign: true, // Both components support this
+      performanceMetrics: shouldUseVirtualization.value && debug,
+    }),
+  )
 
   // Component props mapping
   const getComponentProps = (originalProps: Record<string, any>) => {
@@ -90,7 +99,7 @@ export function useGridIntegration(
       return {
         ...baseProps,
         showPerformanceMetrics: debug && features.value.performanceMetrics,
-        containerHeight: baseProps.containerHeight || 600
+        containerHeight: baseProps.containerHeight || 600,
       }
     }
 
@@ -101,12 +110,12 @@ export function useGridIntegration(
   // Migration helper
   const migrationInfo = computed(() => ({
     isVirtualized: shouldUseVirtualization.value,
-    reason: shouldUseVirtualization.value 
+    reason: shouldUseVirtualization.value
       ? `Using virtualized grid (${totalWeeks} weeks > ${virtualizationThreshold} threshold)`
       : `Using regular grid (${totalWeeks} weeks <= ${virtualizationThreshold} threshold)`,
     performanceMode: performanceMode,
     isLowEndDevice: isLowEndDevice.value,
-    features: features.value
+    features: features.value,
   }))
 
   return {
@@ -115,7 +124,7 @@ export function useGridIntegration(
     shouldUseVirtualization,
     getComponentProps,
     migrationInfo,
-    isLowEndDevice
+    isLowEndDevice,
   }
 }
 
@@ -129,14 +138,14 @@ export function useGridPerformanceMonitoring() {
     memoryUsage: 0,
     cacheHitRatio: 0,
     visibleItems: 0,
-    totalItems: 0
+    totalItems: 0,
   })
 
   const isMonitoring = ref(false)
 
   const startMonitoring = () => {
     isMonitoring.value = true
-    
+
     // Performance observer for render timing
     if ('PerformanceObserver' in window) {
       const observer = new PerformanceObserver((list) => {
@@ -147,7 +156,7 @@ export function useGridPerformanceMonitoring() {
           }
         })
       })
-      
+
       observer.observe({ entryTypes: ['measure'] })
     }
 
@@ -176,7 +185,7 @@ export function useGridPerformanceMonitoring() {
   const getPerformanceReport = () => ({
     ...metrics.value,
     timestamp: Date.now(),
-    isMonitoring: isMonitoring.value
+    isMonitoring: isMonitoring.value,
   })
 
   return {
@@ -185,7 +194,7 @@ export function useGridPerformanceMonitoring() {
     startMonitoring,
     stopMonitoring,
     recordMetric,
-    getPerformanceReport
+    getPerformanceReport,
   }
 }
 
@@ -209,7 +218,7 @@ export class GridFeatureFlags {
     // Notify listeners if value changed
     if (wasEnabled !== enabled) {
       const flagListeners = this.listeners.get(name) || []
-      flagListeners.forEach(listener => listener(enabled))
+      flagListeners.forEach((listener) => listener(enabled))
     }
   }
 
@@ -244,7 +253,7 @@ export class GridFeatureFlags {
     ENABLE_SCROLL_PERSISTENCE: 'grid.enableScrollPersistence',
     ENABLE_PERFORMANCE_METRICS: 'grid.enablePerformanceMetrics',
     ENABLE_RESPONSIVE_DESIGN: 'grid.enableResponsiveDesign',
-    ENABLE_PREFETCHING: 'grid.enablePrefetching'
+    ENABLE_PREFETCHING: 'grid.enablePrefetching',
   } as const
 }
 
@@ -255,7 +264,7 @@ export const gridFeatureFlags = new GridFeatureFlags({
   [GridFeatureFlags.FLAGS.ENABLE_SCROLL_PERSISTENCE]: true,
   [GridFeatureFlags.FLAGS.ENABLE_PERFORMANCE_METRICS]: false,
   [GridFeatureFlags.FLAGS.ENABLE_RESPONSIVE_DESIGN]: true,
-  [GridFeatureFlags.FLAGS.ENABLE_PREFETCHING]: true
+  [GridFeatureFlags.FLAGS.ENABLE_PREFETCHING]: true,
 })
 
 /**
@@ -268,7 +277,7 @@ export class GridABTesting {
 
   constructor(userId: string, forceVariant?: 'control' | 'virtualized') {
     this.userId = userId
-    
+
     if (forceVariant) {
       this.variant = forceVariant
     } else {
@@ -282,7 +291,7 @@ export class GridABTesting {
     let hash = 0
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i)
-      hash = ((hash << 5) - hash) + char
+      hash = (hash << 5) - hash + char
       hash = hash & hash // Convert to 32-bit integer
     }
     return Math.abs(hash)
@@ -305,7 +314,7 @@ export class GridABTesting {
       userId: this.userId,
       variant: this.variant,
       metrics: Object.fromEntries(this.metrics.entries()),
-      timestamp: Date.now()
+      timestamp: Date.now(),
     }
   }
 }
@@ -315,26 +324,17 @@ export class GridABTesting {
  */
 export const GridMigrationGuide = {
   getCompatibilityInfo: (currentProps: Record<string, any>) => {
-    const compatibleProps = [
-      'highlightedWeeks',
-      'showNotes',
-      'interactive',
-      'maxWidth',
-      'cellSize'
-    ]
+    const compatibleProps = ['highlightedWeeks', 'showNotes', 'interactive', 'maxWidth', 'cellSize']
 
-    const newProps = [
-      'containerHeight',
-      'showPerformanceMetrics'
-    ]
+    const newProps = ['containerHeight', 'showPerformanceMetrics']
 
     const deprecatedProps: string[] = []
 
     return {
-      compatibleProps: compatibleProps.filter(prop => prop in currentProps),
-      newProps: newProps.filter(prop => !(prop in currentProps)),
+      compatibleProps: compatibleProps.filter((prop) => prop in currentProps),
+      newProps: newProps.filter((prop) => !(prop in currentProps)),
       deprecatedProps,
-      migrationRequired: deprecatedProps.length > 0
+      migrationRequired: deprecatedProps.length > 0,
     }
   },
 
@@ -343,7 +343,7 @@ export const GridMigrationGuide = {
       step: 1,
       title: 'Install dependencies',
       description: 'No additional dependencies required for virtualization',
-      code: '// Virtualization composables are included in the project'
+      code: '// Virtualization composables are included in the project',
     },
     {
       step: 2,
@@ -357,7 +357,7 @@ const { GridComponent, getComponentProps } = useGridIntegration(totalWeeks)
 
 // In template:
 <component :is="GridComponent" v-bind="getComponentProps(props)" />
-      `.trim()
+      `.trim(),
     },
     {
       step: 3,
@@ -368,7 +368,7 @@ import { useGridPerformanceMonitoring } from '@/components/GridIntegration'
 
 const { startMonitoring, getPerformanceReport } = useGridPerformanceMonitoring()
 startMonitoring()
-      `.trim()
-    }
-  ]
+      `.trim(),
+    },
+  ],
 }

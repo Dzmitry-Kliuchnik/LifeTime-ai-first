@@ -7,8 +7,8 @@
     <div class="demo-header">
       <h2>Virtualized Rendering Performance Demo</h2>
       <p>
-        Compare the performance of regular rendering vs. virtualized rendering 
-        for {{ totalWeeks.toLocaleString() }} lifetime weeks
+        Compare the performance of regular rendering vs. virtualized rendering for
+        {{ totalWeeks.toLocaleString() }} lifetime weeks
       </p>
     </div>
 
@@ -23,8 +23,10 @@
           max="10000"
           step="500"
           class="weeks-slider"
+        />
+        <span class="weeks-display"
+          >{{ totalWeeks.toLocaleString() }} weeks ({{ Math.round(totalWeeks / 52) }} years)</span
         >
-        <span class="weeks-display">{{ totalWeeks.toLocaleString() }} weeks ({{ Math.round(totalWeeks / 52) }} years)</span>
       </div>
 
       <div class="control-group">
@@ -37,7 +39,7 @@
           max="24"
           step="2"
           class="cell-size-slider"
-        >
+        />
         <span class="size-display">{{ cellSize }}px</span>
       </div>
 
@@ -53,16 +55,12 @@
       <div class="grid-section">
         <div class="section-header">
           <h3>Regular Grid</h3>
-          <div class="performance-badge" :class="{ 'poor': regularPerformance.renderTime > 100 }">
+          <div class="performance-badge" :class="{ poor: regularPerformance.renderTime > 100 }">
             {{ regularPerformance.renderTime }}ms render
           </div>
         </div>
         <div class="grid-container" :style="containerStyles">
-          <div
-            ref="regularGridRef"
-            class="regular-grid"
-            :style="regularGridStyles"
-          >
+          <div ref="regularGridRef" class="regular-grid" :style="regularGridStyles">
             <div
               v-for="week in regularWeeks"
               :key="`regular-${week}`"
@@ -92,9 +90,7 @@
       <div class="grid-section">
         <div class="section-header">
           <h3>Virtualized Grid</h3>
-          <div class="performance-badge good">
-            {{ virtualizedPerformance.renderTime }}ms render
-          </div>
+          <div class="performance-badge good">{{ virtualizedPerformance.renderTime }}ms render</div>
         </div>
         <div class="grid-container" :style="containerStyles">
           <VirtualizedLifetimeGrid
@@ -109,7 +105,9 @@
         <div class="performance-stats">
           <div class="stat">
             <span class="stat-label">DOM Elements:</span>
-            <span class="stat-value">{{ virtualizedPerformance.visibleItems.toLocaleString() }}</span>
+            <span class="stat-value">{{
+              virtualizedPerformance.visibleItems.toLocaleString()
+            }}</span>
           </div>
           <div class="stat">
             <span class="stat-label">Memory Usage:</span>
@@ -117,7 +115,9 @@
           </div>
           <div class="stat">
             <span class="stat-label">Cache Hit Ratio:</span>
-            <span class="stat-value">{{ (virtualizedPerformance.cacheHitRatio * 100).toFixed(1) }}%</span>
+            <span class="stat-value"
+              >{{ (virtualizedPerformance.cacheHitRatio * 100).toFixed(1) }}%</span
+            >
           </div>
         </div>
       </div>
@@ -133,7 +133,10 @@
             <div class="bar regular" :style="{ height: `${regularPerformance.renderTime}%` }">
               <span class="bar-label">{{ regularPerformance.renderTime }}ms</span>
             </div>
-            <div class="bar virtualized" :style="{ height: `${virtualizedPerformance.renderTime}%` }">
+            <div
+              class="bar virtualized"
+              :style="{ height: `${virtualizedPerformance.renderTime}%` }"
+            >
               <span class="bar-label">{{ virtualizedPerformance.renderTime }}ms</span>
             </div>
           </div>
@@ -146,11 +149,19 @@
         <div class="chart-container">
           <div class="chart-title">DOM Elements</div>
           <div class="bar-chart">
-            <div class="bar regular" :style="{ height: `${(regularWeeks.length / totalWeeks) * 100}%` }">
+            <div
+              class="bar regular"
+              :style="{ height: `${(regularWeeks.length / totalWeeks) * 100}%` }"
+            >
               <span class="bar-label">{{ regularWeeks.length.toLocaleString() }}</span>
             </div>
-            <div class="bar virtualized" :style="{ height: `${(virtualizedPerformance.visibleItems / totalWeeks) * 100}%` }">
-              <span class="bar-label">{{ virtualizedPerformance.visibleItems.toLocaleString() }}</span>
+            <div
+              class="bar virtualized"
+              :style="{ height: `${(virtualizedPerformance.visibleItems / totalWeeks) * 100}%` }"
+            >
+              <span class="bar-label">{{
+                virtualizedPerformance.visibleItems.toLocaleString()
+              }}</span>
             </div>
           </div>
           <div class="chart-labels">
@@ -162,10 +173,20 @@
         <div class="chart-container">
           <div class="chart-title">Memory Usage</div>
           <div class="bar-chart">
-            <div class="bar regular" :style="{ height: `${(regularPerformance.memoryUsage / Math.max(regularPerformance.memoryUsage, virtualizedPerformance.memoryUsage)) * 100}%` }">
+            <div
+              class="bar regular"
+              :style="{
+                height: `${(regularPerformance.memoryUsage / Math.max(regularPerformance.memoryUsage, virtualizedPerformance.memoryUsage)) * 100}%`,
+              }"
+            >
               <span class="bar-label">{{ formatBytes(regularPerformance.memoryUsage) }}</span>
             </div>
-            <div class="bar virtualized" :style="{ height: `${(virtualizedPerformance.memoryUsage / Math.max(regularPerformance.memoryUsage, virtualizedPerformance.memoryUsage)) * 100}%` }">
+            <div
+              class="bar virtualized"
+              :style="{
+                height: `${(virtualizedPerformance.memoryUsage / Math.max(regularPerformance.memoryUsage, virtualizedPerformance.memoryUsage)) * 100}%`,
+              }"
+            >
               <span class="bar-label">{{ formatBytes(virtualizedPerformance.memoryUsage) }}</span>
             </div>
           </div>
@@ -244,23 +265,25 @@ const regularPerformance = ref({
   renderTime: 0,
   memoryUsage: 0,
   scrollLatency: 0,
-  domElements: 0
+  domElements: 0,
 })
 
 const virtualizedPerformance = ref({
   renderTime: 0,
   memoryUsage: 0,
   visibleItems: 200, // Approximate
-  cacheHitRatio: 0.85
+  cacheHitRatio: 0.85,
 })
 
-const benchmarkResults = ref<Array<{
-  test: string
-  regular: string
-  virtualized: string
-  improvement: string
-  improvementClass: string
-}>>([])
+const benchmarkResults = ref<
+  Array<{
+    test: string
+    regular: string
+    virtualized: string
+    improvement: string
+    improvementClass: string
+  }>
+>([])
 
 // Regular grid weeks (limited for demo)
 const regularWeeks = computed(() => {
@@ -274,7 +297,7 @@ const containerStyles = computed(() => ({
   height: '400px',
   border: '1px solid #e5e7eb',
   borderRadius: '8px',
-  overflow: 'hidden'
+  overflow: 'hidden',
 }))
 
 const regularGridStyles = computed(() => ({
@@ -283,12 +306,12 @@ const regularGridStyles = computed(() => ({
   gap: '1px',
   padding: '1px',
   height: `${Math.ceil(regularWeeks.value.length / 52) * (cellSize.value + 1)}px`,
-  overflow: 'auto'
+  overflow: 'auto',
 }))
 
 const regularCellStyles = computed(() => ({
   width: `${cellSize.value}px`,
-  height: `${cellSize.value}px`
+  height: `${cellSize.value}px`,
 }))
 
 // Week classification for demo
@@ -303,29 +326,33 @@ const getWeekClass = (weekIndex: number) => {
 const renderTimeImprovement = computed(() => {
   if (regularPerformance.value.renderTime === 0) return 0
   return Math.round(
-    ((regularPerformance.value.renderTime - virtualizedPerformance.value.renderTime) / 
-     regularPerformance.value.renderTime) * 100
+    ((regularPerformance.value.renderTime - virtualizedPerformance.value.renderTime) /
+      regularPerformance.value.renderTime) *
+      100,
   )
 })
 
 const domReduction = computed(() => {
   if (regularWeeks.value.length === 0) return 0
   return Math.round(
-    ((regularWeeks.value.length - virtualizedPerformance.value.visibleItems) / 
-     regularWeeks.value.length) * 100
+    ((regularWeeks.value.length - virtualizedPerformance.value.visibleItems) /
+      regularWeeks.value.length) *
+      100,
   )
 })
 
 const memoryImprovement = computed(() => {
   if (regularPerformance.value.memoryUsage === 0) return 0
   return Math.round(
-    ((regularPerformance.value.memoryUsage - virtualizedPerformance.value.memoryUsage) / 
-     regularPerformance.value.memoryUsage) * 100
+    ((regularPerformance.value.memoryUsage - virtualizedPerformance.value.memoryUsage) /
+      regularPerformance.value.memoryUsage) *
+      100,
   )
 })
 
 const improvementClass = computed(() => {
-  const avgImprovement = (renderTimeImprovement.value + domReduction.value + memoryImprovement.value) / 3
+  const avgImprovement =
+    (renderTimeImprovement.value + domReduction.value + memoryImprovement.value) / 3
   if (avgImprovement > 70) return 'excellent'
   if (avgImprovement > 50) return 'good'
   if (avgImprovement > 30) return 'moderate'
@@ -387,17 +414,17 @@ const startBenchmark = async () => {
         regular: `${regularPerformance.value.renderTime}ms`,
         virtualized: `${virtualizedPerformance.value.renderTime}ms`,
         improvement: `${renderTimeImprovement.value}% faster`,
-        improvementClass: renderTimeImprovement.value > 50 ? 'good' : 'moderate'
+        improvementClass: renderTimeImprovement.value > 50 ? 'good' : 'moderate',
       },
       {
         test: 'DOM Elements',
         regular: regularWeeks.value.length.toLocaleString(),
         virtualized: virtualizedPerformance.value.visibleItems.toLocaleString(),
         improvement: `${domReduction.value}% fewer`,
-        improvementClass: domReduction.value > 80 ? 'excellent' : 'good'
+        improvementClass: domReduction.value > 80 ? 'excellent' : 'good',
       },
       ...scrollTests,
-      ...memoryTests
+      ...memoryTests,
     ]
   } finally {
     isBenchmarking.value = false
@@ -412,8 +439,8 @@ const runScrollBenchmark = async () => {
       regular: `${regularPerformance.value.scrollLatency || 25}ms`,
       virtualized: '8ms',
       improvement: '68% faster',
-      improvementClass: 'excellent'
-    }
+      improvementClass: 'excellent',
+    },
   ]
 }
 
@@ -424,17 +451,18 @@ const runMemoryBenchmark = async () => {
       regular: formatBytes(regularPerformance.value.memoryUsage || 15 * 1024 * 1024),
       virtualized: formatBytes(virtualizedPerformance.value.memoryUsage || 3 * 1024 * 1024),
       improvement: `${memoryImprovement.value}% less`,
-      improvementClass: memoryImprovement.value > 60 ? 'excellent' : 'good'
-    }
+      improvementClass: memoryImprovement.value > 60 ? 'excellent' : 'good',
+    },
   ]
 }
 
 // Event handlers
-const handleVirtualizedScroll = (position: { top: number; left: number }) => {
+const handleVirtualizedScroll = (_position: { top: number; left: number }) => {
   // Update performance metrics based on scroll
-  virtualizedPerformance.value.visibleItems = Math.min(200, Math.max(50, 
-    Math.floor((400 / (cellSize.value + 1)) * 52)
-  ))
+  virtualizedPerformance.value.visibleItems = Math.min(
+    200,
+    Math.max(50, Math.floor((400 / (cellSize.value + 1)) * 52)),
+  )
 }
 
 // Watch for changes and remeasure
@@ -459,7 +487,10 @@ onMounted(async () => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 .demo-header {
@@ -811,12 +842,12 @@ onMounted(async () => {
   .comparison-container {
     grid-template-columns: 1fr;
   }
-  
+
   .demo-controls {
     flex-direction: column;
     gap: 1rem;
   }
-  
+
   .comparison-charts {
     grid-template-columns: 1fr;
   }

@@ -46,24 +46,18 @@ export function useVirtualScrolling(options: VirtualScrollingOptions) {
   // Internal state
   const scrollTop = ref(0)
   const isScrolling = ref(false)
-  const scrollTimeout = ref<number>()
+  const scrollTimeout = ref<ReturnType<typeof setTimeout>>()
 
   // Container element reference
   const containerRef = ref<HTMLElement>()
   const contentRef = ref<HTMLElement>()
 
   // Computed values for virtual scrolling calculations
-  const totalRows = computed(() => 
-    Math.ceil(totalItems.value / itemsPerRow.value)
-  )
+  const totalRows = computed(() => Math.ceil(totalItems.value / itemsPerRow.value))
 
-  const totalHeight = computed(() => 
-    totalRows.value * itemHeight.value
-  )
+  const totalHeight = computed(() => totalRows.value * itemHeight.value)
 
-  const visibleRows = computed(() => 
-    Math.ceil(containerHeight.value / itemHeight.value)
-  )
+  const visibleRows = computed(() => Math.ceil(containerHeight.value / itemHeight.value))
 
   const startRow = computed(() => {
     const row = Math.floor(scrollTop.value / itemHeight.value)
@@ -71,21 +65,17 @@ export function useVirtualScrolling(options: VirtualScrollingOptions) {
   })
 
   const endRow = computed(() => {
-    const row = startRow.value + visibleRows.value + (overscan.value * 2)
+    const row = startRow.value + visibleRows.value + overscan.value * 2
     return Math.min(totalRows.value - 1, row)
   })
 
-  const startIndex = computed(() => 
-    startRow.value * itemsPerRow.value
+  const startIndex = computed(() => startRow.value * itemsPerRow.value)
+
+  const endIndex = computed(() =>
+    Math.min(totalItems.value - 1, (endRow.value + 1) * itemsPerRow.value - 1),
   )
 
-  const endIndex = computed(() => 
-    Math.min(totalItems.value - 1, (endRow.value + 1) * itemsPerRow.value - 1)
-  )
-
-  const offsetY = computed(() => 
-    startRow.value * itemHeight.value
-  )
+  const offsetY = computed(() => startRow.value * itemHeight.value)
 
   const visibleItems = computed(() => {
     const items: number[] = []
@@ -98,14 +88,16 @@ export function useVirtualScrolling(options: VirtualScrollingOptions) {
   })
 
   // Current virtual scrolling state
-  const state = computed((): VirtualScrollingState => ({
-    scrollTop: scrollTop.value,
-    startIndex: startIndex.value,
-    endIndex: endIndex.value,
-    totalHeight: totalHeight.value,
-    offsetY: offsetY.value,
-    visibleItems: visibleItems.value
-  }))
+  const state = computed(
+    (): VirtualScrollingState => ({
+      scrollTop: scrollTop.value,
+      startIndex: startIndex.value,
+      endIndex: endIndex.value,
+      totalHeight: totalHeight.value,
+      offsetY: offsetY.value,
+      visibleItems: visibleItems.value,
+    }),
+  )
 
   // Scroll handler with throttling
   const handleScroll = (event: Event) => {
@@ -126,7 +118,7 @@ export function useVirtualScrolling(options: VirtualScrollingOptions) {
         scrollTop: scrollTop.value,
         startRow: startRow.value,
         endRow: endRow.value,
-        visibleItems: visibleItems.value.length
+        visibleItems: visibleItems.value.length,
       })
     }
   }
@@ -140,7 +132,7 @@ export function useVirtualScrolling(options: VirtualScrollingOptions) {
 
     containerRef.value.scrollTo({
       top: targetScrollTop,
-      behavior
+      behavior,
     })
   }
 
@@ -150,7 +142,7 @@ export function useVirtualScrolling(options: VirtualScrollingOptions) {
 
     containerRef.value.scrollTo({
       top: position,
-      behavior
+      behavior,
     })
   }
 
@@ -248,7 +240,7 @@ export function useVirtualScrolling(options: VirtualScrollingOptions) {
         totalItems: totalItems.value,
         itemHeight: itemHeight.value,
         itemsPerRow: itemsPerRow.value,
-        containerHeight: containerHeight.value
+        containerHeight: containerHeight.value,
       })
     }
   })
@@ -257,16 +249,16 @@ export function useVirtualScrolling(options: VirtualScrollingOptions) {
     // Refs for template
     containerRef,
     contentRef,
-    
+
     // State
     state,
     isScrolling,
-    
+
     // Computed values
     totalHeight,
     visibleItems,
     offsetY,
-    
+
     // Methods
     scrollToIndex,
     scrollToPosition,
@@ -278,14 +270,14 @@ export function useVirtualScrolling(options: VirtualScrollingOptions) {
     updateTotalItems,
     updateItemHeight,
     updateItemsPerRow,
-    
+
     // Direct access to reactive values for fine-grained control
     scrollTop,
     startIndex,
     endIndex,
     startRow,
     endRow,
-    totalRows
+    totalRows,
   }
 }
 
@@ -302,7 +294,7 @@ export interface GridVirtualScrollingOptions extends VirtualScrollingOptions {
 export function useGridVirtualScrolling(options: GridVirtualScrollingOptions) {
   const baseVirtualScrolling = useVirtualScrolling({
     ...options,
-    itemsPerRow: options.columns
+    itemsPerRow: options.columns,
   })
 
   const columns = ref(options.columns)
@@ -310,8 +302,8 @@ export function useGridVirtualScrolling(options: GridVirtualScrollingOptions) {
   const gap = ref(options.gap || 1)
 
   // Grid-specific calculations
-  const gridWidth = computed(() => 
-    columns.value * cellWidth.value + (columns.value - 1) * gap.value
+  const gridWidth = computed(
+    () => columns.value * cellWidth.value + (columns.value - 1) * gap.value,
   )
 
   const getGridPosition = (index: number) => {
@@ -321,7 +313,7 @@ export function useGridVirtualScrolling(options: GridVirtualScrollingOptions) {
       row,
       col,
       x: col * (cellWidth.value + gap.value),
-      y: row * options.itemHeight
+      y: row * options.itemHeight,
     }
   }
 
@@ -336,16 +328,16 @@ export function useGridVirtualScrolling(options: GridVirtualScrollingOptions) {
 
   return {
     ...baseVirtualScrolling,
-    
+
     // Grid-specific properties
     columns,
     cellWidth,
     gap,
     gridWidth,
-    
+
     // Grid-specific methods
     getGridPosition,
     updateColumns,
-    updateCellWidth
+    updateCellWidth,
   }
 }

@@ -4,7 +4,8 @@
     <div class="hero-section">
       <h1>Your Life in Weeks</h1>
       <p class="hero-subtitle">
-        Visualize your entire lifetime as a grid of weeks. Each square represents one week of your life.
+        Visualize your entire lifetime as a grid of weeks. Each square represents one week of your
+        life.
       </p>
     </div>
 
@@ -13,7 +14,7 @@
       <div class="setup-card">
         <h2>Let's Get Started</h2>
         <p>To display your life grid, we need some basic information:</p>
-        
+
         <form @submit.prevent="handleQuickSetup" class="setup-form">
           <div class="form-group">
             <label for="birth-date">Date of Birth:</label>
@@ -25,7 +26,7 @@
               class="form-control"
             />
           </div>
-          
+
           <div class="form-group">
             <label for="lifespan">Expected Lifespan (years):</label>
             <input
@@ -38,7 +39,7 @@
               class="form-control"
             />
           </div>
-          
+
           <div class="form-group">
             <label for="full-name">Full Name (optional):</label>
             <input
@@ -49,7 +50,7 @@
               placeholder="Your full name"
             />
           </div>
-          
+
           <button type="submit" class="btn-primary" :disabled="isLoading">
             {{ isLoading ? 'Setting up...' : 'Create My Life Grid' }}
           </button>
@@ -62,60 +63,100 @@
       <div class="grid-header">
         <h2>Your Life Journey</h2>
         <div class="life-stats" v-if="lifeProgress">
-          <div class="stat-item">
+          <div class="stat-item" v-if="lifeProgress.age_info">
             <span class="stat-label">Age:</span>
             <span class="stat-value">{{ lifeProgress.age_info.years }} years</span>
           </div>
-          <div class="stat-item">
+          <div class="stat-item" v-if="lifeProgress.weeks_lived !== undefined">
             <span class="stat-label">Weeks Lived:</span>
             <span class="stat-value">{{ lifeProgress.weeks_lived.toLocaleString() }}</span>
           </div>
-          <div class="stat-item">
+          <div class="stat-item" v-if="lifeProgress.progress_percentage !== undefined">
             <span class="stat-label">Progress:</span>
             <span class="stat-value">{{ lifeProgress.progress_percentage.toFixed(1) }}%</span>
           </div>
         </div>
       </div>
 
+      <!-- Grid Controls -->
+      <div class="grid-controls">
+        <button @click="resetUser" class="btn-outline">Change User Info</button>
+      </div>
+
       <!-- The LifetimeGrid Component -->
       <LifetimeGrid
         :interactive="true"
         :show-notes="true"
-        :highlighted-weeks="highlightedWeeks"
+        :highlighted-weeks="visibleHighlightedWeeks"
+        :hide-selected-week="
+          isNotesModalOpen && selectedWeekForNotes ? selectedWeekForNotes.weekIndex : null
+        "
         :cell-size="12"
-        max-width="100%"
-        @week-click="handleWeekClick"
-        @week-hover="handleWeekHover"
-        @week-focus="handleWeekFocus"
+        max-width="none"
+        @weekClick="handleWeekClick"
+        @weekHover="handleWeekHover"
+        @weekFocus="handleWeekFocus"
+        @weekLeave="handleWeekLeave"
       />
+    </div>
 
-      <!-- Grid Controls -->
-      <div class="grid-controls">
-        <button @click="jumpToCurrentWeek" class="btn-secondary">
-          Jump to Current Week
-        </button>
-        <button @click="clearHighlights" class="btn-secondary">
-          Clear Highlights
-        </button>
-        <button @click="resetUser" class="btn-outline">
-          Change User Info
-        </button>
+    <!-- Week Hover Tooltip -->
+    <div
+      v-if="hoveredWeekInfo"
+      class="week-hover-tooltip"
+      :style="{
+        left: hoveredWeekInfo.x + 'px',
+        top: hoveredWeekInfo.y + 'px',
+      }"
+    >
+      <div class="tooltip-header">
+        <strong>Week {{ hoveredWeekInfo.weekIndex + 1 }}</strong>
       </div>
-
-      <!-- Selected Week Info -->
-      <div v-if="selectedWeekInfo" class="week-info-panel">
-        <h3>Week Information</h3>
-        <div class="week-details">
-          <p><strong>Week {{ selectedWeekInfo.weekIndex + 1 }}</strong></p>
-          <p>Year {{ Math.floor(selectedWeekInfo.weekIndex / 52) + 1 }} of life</p>
-          <p>Week {{ (selectedWeekInfo.weekIndex % 52) + 1 }} of year</p>
-          <p>Status: {{ selectedWeekInfo.weekData.type }}</p>
-          <p v-if="selectedWeekInfo.weekData.specialDateType">
-            Special: {{ selectedWeekInfo.weekData.specialDateType }}
-          </p>
-        </div>
+      <div class="tooltip-content">
+        <p>Year {{ Math.floor(hoveredWeekInfo.weekIndex / 52) + 1 }} of life</p>
+        <p>Week {{ (hoveredWeekInfo.weekIndex % 52) + 1 }} of year</p>
+        <p class="week-status" :class="`status-${hoveredWeekInfo.weekData.type}`">
+          Status: {{ hoveredWeekInfo.weekData.type }}
+        </p>
+        <p v-if="hoveredWeekInfo.weekData.specialDateType" class="special-date">
+          Special: {{ hoveredWeekInfo.weekData.specialDateType }}
+        </p>
       </div>
     </div>
+
+    <!-- Notes Modal -->
+    <NotesModal
+      :isOpen="isNotesModalOpen"
+      @update:isOpen="isNotesModalOpen = $event"
+      @close="handleNotesModalClose"
+      :title="
+        selectedWeekForNotes ? `Notes for Week ${selectedWeekForNotes.weekIndex + 1}` : 'Notes'
+      "
+      :description="
+        selectedWeekForNotes
+          ? `Year ${Math.floor(selectedWeekForNotes.weekIndex / 52) + 1}, Week ${(selectedWeekForNotes.weekIndex % 52) + 1}`
+          : ''
+      "
+      variant="modal"
+      size="large"
+    >
+      <template #headerActions>
+        <NotesInterface
+          v-if="selectedWeekForNotes"
+          :initial-week-number="selectedWeekForNotes.weekIndex"
+          :header-actions-only="true"
+          @create-note-request="handleCreateNoteRequest"
+          @toggle-search-request="handleToggleSearchRequest"
+        />
+      </template>
+
+      <NotesInterface
+        ref="mainNotesInterface"
+        v-if="selectedWeekForNotes"
+        :initial-week-number="selectedWeekForNotes.weekIndex"
+        :hide-header-actions="true"
+      />
+    </NotesModal>
   </div>
 </template>
 
@@ -124,6 +165,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useWeekCalculationStore } from '@/stores/week-calculation'
 import LifetimeGrid from '@/components/LifetimeGrid.vue'
+import NotesModal from '@/components/notes/NotesModal.vue'
+import NotesInterface from '@/components/notes/NotesInterface.vue'
 
 // Stores
 const userStore = useUserStore()
@@ -133,15 +176,22 @@ const weekCalculationStore = useWeekCalculationStore()
 const setupData = ref({
   dateOfBirth: '',
   lifespan: 80,
-  fullName: ''
+  fullName: '',
 })
 
 // Component state
 const isLoading = ref(false)
 const highlightedWeeks = ref<number[]>([])
-const selectedWeekInfo = ref<{
+const isNotesModalOpen = ref(false)
+const selectedWeekForNotes = ref<{ weekIndex: number; weekData: any } | null>(null)
+const mainNotesInterface = ref<InstanceType<typeof NotesInterface> | null>(null)
+
+// Hover tooltip state
+const hoveredWeekInfo = ref<{
   weekIndex: number
   weekData: any
+  x: number
+  y: number
 } | null>(null)
 
 // Computed properties
@@ -151,6 +201,17 @@ const isUserSetup = computed(() => {
 
 const lifeProgress = computed(() => weekCalculationStore.lifeProgress)
 
+// Filter highlighted weeks to exclude the one with open modal
+const visibleHighlightedWeeks = computed(() => {
+  if (!isNotesModalOpen.value || !selectedWeekForNotes.value) {
+    return highlightedWeeks.value
+  }
+
+  // Remove the week for which the modal is currently open
+  const modalWeekIndex = selectedWeekForNotes.value.weekIndex
+  return highlightedWeeks.value.filter((weekIndex) => weekIndex !== modalWeekIndex)
+})
+
 // Methods
 async function handleQuickSetup() {
   if (!setupData.value.dateOfBirth || !setupData.value.lifespan) {
@@ -158,7 +219,7 @@ async function handleQuickSetup() {
   }
 
   isLoading.value = true
-  
+
   try {
     // Create a mock user for demonstration
     // In a real app, this would call the user API
@@ -174,7 +235,7 @@ async function handleQuickSetup() {
       is_verified: true,
       is_superuser: false,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     }
 
     // Mock life progress calculation for demo
@@ -184,10 +245,18 @@ async function handleQuickSetup() {
     const weeksSinceBirth = Math.floor(daysSinceBirth / 7)
     const totalLifetimeWeeks = Math.floor(setupData.value.lifespan * 52.1775)
     const progressPercentage = (weeksSinceBirth / totalLifetimeWeeks) * 100
-    
-    const ageYears = Math.floor((now.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25))
-    const ageMonths = Math.floor(((now.getTime() - birthDate.getTime()) % (1000 * 60 * 60 * 24 * 365.25)) / (1000 * 60 * 60 * 24 * 30.44))
-    const ageDays = Math.floor(((now.getTime() - birthDate.getTime()) % (1000 * 60 * 60 * 24 * 30.44)) / (1000 * 60 * 60 * 24))
+
+    const ageYears = Math.floor(
+      (now.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25),
+    )
+    const ageMonths = Math.floor(
+      ((now.getTime() - birthDate.getTime()) % (1000 * 60 * 60 * 24 * 365.25)) /
+        (1000 * 60 * 60 * 24 * 30.44),
+    )
+    const ageDays = Math.floor(
+      ((now.getTime() - birthDate.getTime()) % (1000 * 60 * 60 * 24 * 30.44)) /
+        (1000 * 60 * 60 * 24),
+    )
 
     // Manually set the store values for demo
     const mockLifeProgress = {
@@ -201,9 +270,9 @@ async function handleQuickSetup() {
       age_info: {
         years: ageYears,
         months: ageMonths,
-        days: ageDays
+        days: ageDays,
       },
-      current_date: now.toISOString().split('T')[0]!
+      current_date: now.toISOString().split('T')[0]!,
     }
 
     // Set store values directly for demo (since we don't have API)
@@ -211,16 +280,15 @@ async function handleQuickSetup() {
     weekCalculationStore.totalWeeks = {
       date_of_birth: setupData.value.dateOfBirth,
       lifespan_years: setupData.value.lifespan,
-      total_weeks: totalLifetimeWeeks
+      total_weeks: totalLifetimeWeeks,
     }
     weekCalculationStore.currentWeek = {
       date_of_birth: setupData.value.dateOfBirth,
       timezone: 'UTC',
       current_week_index: weeksSinceBirth,
       weeks_lived: weeksSinceBirth,
-      current_date: now.toISOString().split('T')[0]!
+      current_date: now.toISOString().split('T')[0]!,
     }
-
   } catch (error) {
     console.error('Setup failed:', error)
     // Handle error appropriately
@@ -230,17 +298,34 @@ async function handleQuickSetup() {
 }
 
 function handleWeekClick(weekIndex: number, weekData: any) {
-  selectedWeekInfo.value = { weekIndex, weekData }
-  
+  console.log('Week clicked:', weekIndex, weekData)
+  console.log('Before update - isNotesModalOpen:', isNotesModalOpen.value)
+
   // Add to highlights if not already there
   if (!highlightedWeeks.value.includes(weekIndex)) {
     highlightedWeeks.value.push(weekIndex)
   }
+
+  // Open notes modal for the selected week
+  selectedWeekForNotes.value = { weekIndex, weekData }
+  isNotesModalOpen.value = true
+
+  console.log('After update - isNotesModalOpen:', isNotesModalOpen.value)
+  console.log('selectedWeekForNotes:', selectedWeekForNotes.value)
 }
 
-function handleWeekHover(weekIndex: number, weekData: any) {
-  // Optional: Show tooltip or temporary info
-  console.log('Hovered week:', weekIndex, weekData)
+function handleWeekHover(weekIndex: number, weekData: any, event?: MouseEvent) {
+  if (event) {
+    const rect = (event.target as HTMLElement).getBoundingClientRect()
+    const tooltipOffset = 20
+
+    hoveredWeekInfo.value = {
+      weekIndex,
+      weekData,
+      x: rect.left + rect.width / 2,
+      y: rect.top - tooltipOffset,
+    }
+  }
 }
 
 function handleWeekFocus(weekIndex: number, weekData: any) {
@@ -248,31 +333,44 @@ function handleWeekFocus(weekIndex: number, weekData: any) {
   console.log('Focused week:', weekIndex, weekData)
 }
 
-function jumpToCurrentWeek() {
-  const currentWeek = weekCalculationStore.currentWeekIndex
-  if (currentWeek !== null) {
-    highlightedWeeks.value = [currentWeek]
-    selectedWeekInfo.value = null
+function handleWeekLeave() {
+  hoveredWeekInfo.value = null
+}
+
+function handleNotesModalClose() {
+  isNotesModalOpen.value = false
+  selectedWeekForNotes.value = null
+  // The highlighted week will automatically reappear when the modal closes
+}
+
+function handleCreateNoteRequest() {
+  // Call the openCreateModal method on the main NotesInterface instance
+  if (mainNotesInterface.value) {
+    mainNotesInterface.value.openCreateModal()
   }
 }
 
-function clearHighlights() {
-  highlightedWeeks.value = []
-  selectedWeekInfo.value = null
+function handleToggleSearchRequest() {
+  // Call the toggleSearch method on the main NotesInterface instance
+  if (mainNotesInterface.value) {
+    mainNotesInterface.value.toggleSearch()
+  }
 }
 
 function resetUser() {
   userStore.currentUser = null
-  
+
   // Reset form data
   setupData.value = {
     dateOfBirth: '',
     lifespan: 80,
-    fullName: ''
+    fullName: '',
   }
   highlightedWeeks.value = []
-  selectedWeekInfo.value = null
-  
+  hoveredWeekInfo.value = null
+  isNotesModalOpen.value = false
+  selectedWeekForNotes.value = null
+
   // Set default birth date again
   const thirtyYearsAgo = new Date()
   thirtyYearsAgo.setFullYear(thirtyYearsAgo.getFullYear() - 30)
@@ -371,7 +469,9 @@ onMounted(() => {
   border: 2px solid #e1e5e9;
   border-radius: 8px;
   font-size: 1rem;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .form-control:focus {
@@ -389,7 +489,9 @@ onMounted(() => {
   font-size: 1.1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   margin-top: 1rem;
 }
 
@@ -408,7 +510,8 @@ onMounted(() => {
 .grid-section {
   background: white;
   min-height: 100vh;
-  padding: 2rem;
+  padding: 2rem 1rem;
+  width: 100%;
 }
 
 .grid-header {
@@ -525,41 +628,41 @@ onMounted(() => {
   .hero-section {
     padding: 2rem 1rem;
   }
-  
+
   .hero-section h1 {
     font-size: 2rem;
   }
-  
+
   .setup-section {
     padding: 0 1rem 2rem;
   }
-  
+
   .setup-card {
     padding: 1.5rem;
   }
-  
+
   .grid-section {
-    padding: 1rem;
+    padding: 1rem 0.5rem;
   }
-  
+
   .grid-header h2 {
     font-size: 2rem;
   }
-  
+
   .life-stats {
     gap: 1rem;
   }
-  
+
   .stat-item {
     min-width: 100px;
     padding: 0.75rem;
   }
-  
+
   .grid-controls {
     flex-direction: column;
     align-items: center;
   }
-  
+
   .btn-secondary,
   .btn-outline {
     width: 100%;
@@ -571,14 +674,111 @@ onMounted(() => {
   .hero-section h1 {
     font-size: 1.8rem;
   }
-  
+
   .hero-subtitle {
     font-size: 1rem;
   }
-  
+
   .life-stats {
     flex-direction: column;
     align-items: center;
+  }
+}
+
+/* Week hover tooltip styles */
+.week-hover-tooltip {
+  position: fixed;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  font-size: 0.9rem;
+  min-width: 200px;
+  pointer-events: none;
+  opacity: 0.95;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid white;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: -9px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid #ddd;
+  }
+}
+
+.week-info {
+  h4 {
+    margin: 0 0 8px 0;
+    color: #333;
+    font-size: 1rem;
+  }
+
+  p {
+    margin: 4px 0;
+    color: #666;
+    font-size: 0.85rem;
+  }
+
+  .week-dates {
+    font-weight: 500;
+    color: #2563eb;
+  }
+
+  .week-stats {
+    border-top: 1px solid #eee;
+    padding-top: 8px;
+    margin-top: 8px;
+  }
+}
+
+/* Dark mode styles for tooltip */
+@media (prefers-color-scheme: dark) {
+  .week-hover-tooltip {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+
+    &::before {
+      border-bottom-color: #2d3748;
+    }
+
+    &::after {
+      border-bottom-color: #4a5568;
+    }
+  }
+
+  .week-info {
+    h4 {
+      color: #e2e8f0;
+    }
+
+    p {
+      color: #a0aec0;
+    }
+
+    .week-dates {
+      color: #63b3ed;
+    }
+
+    .week-stats {
+      border-color: #4a5568;
+    }
   }
 }
 </style>

@@ -7,7 +7,7 @@ import {
   formatDateISO,
   addWeeks,
   addDays,
-  isSameDay
+  isSameDay,
 } from '../../utils/date'
 
 describe('Date Utilities', () => {
@@ -62,19 +62,19 @@ describe('Date Utilities', () => {
   describe('addWeeks', () => {
     it('should add weeks correctly', () => {
       const result = addWeeks(testDate, 2)
-      expect(result.getTime()).toBe(testDate.getTime() + (2 * 7 * 24 * 60 * 60 * 1000))
+      expect(result.getTime()).toBe(testDate.getTime() + 2 * 7 * 24 * 60 * 60 * 1000)
     })
 
     it('should handle negative weeks', () => {
       const result = addWeeks(testDate, -1)
-      expect(result.getTime()).toBe(testDate.getTime() - (7 * 24 * 60 * 60 * 1000))
+      expect(result.getTime()).toBe(testDate.getTime() - 7 * 24 * 60 * 60 * 1000)
     })
   })
 
   describe('addDays', () => {
     it('should add days correctly', () => {
       const result = addDays(testDate, 5)
-      expect(result.getTime()).toBe(testDate.getTime() + (5 * 24 * 60 * 60 * 1000))
+      expect(result.getTime()).toBe(testDate.getTime() + 5 * 24 * 60 * 60 * 1000)
     })
   })
 

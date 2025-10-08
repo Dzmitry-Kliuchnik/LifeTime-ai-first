@@ -1,5 +1,6 @@
 <template>
   <section
+    ref="containerRef"
     class="lifetime-grid-container"
     :class="{ 'is-loading': isLoading }"
     :aria-label="`Life visualization grid for ${totalWeeks} weeks`"
@@ -7,18 +8,14 @@
   >
     <!-- Screen reader description -->
     <div id="grid-description" class="sr-only">
-      A visual representation of your lifetime in weeks. Each cell represents one week.
-      Past weeks are shown in darker colors, current week is highlighted, and future weeks are in lighter colors.
-      Use arrow keys to navigate the grid, Enter or Space to select a week, Home to go to first week, End to go to last week.
+      A visual representation of your lifetime in weeks. Each cell represents one week. Past weeks
+      are shown in darker colors, current week is highlighted, and future weeks are in lighter
+      colors. Use arrow keys to navigate the grid, Enter or Space to select a week, Home to go to
+      first week, End to go to last week.
     </div>
-    
+
     <!-- Live region for screen reader announcements -->
-    <div 
-      id="week-announcements" 
-      class="sr-only" 
-      aria-live="polite" 
-      aria-atomic="true"
-    ></div>
+    <div id="week-announcements" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
     <!-- Loading state -->
     <div v-if="isLoading" class="loading-overlay" aria-live="polite">
@@ -29,9 +26,7 @@
     <!-- Error state -->
     <div v-if="error" class="error-state" role="alert">
       <p>{{ error }}</p>
-      <button @click="handleRetry" class="retry-button">
-        Retry
-      </button>
+      <button @click="handleRetry" class="retry-button">Retry</button>
     </div>
 
     <!-- Grid content -->
@@ -94,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useWeekCalculationStore } from '@/stores/week-calculation'
 import { useUserStore } from '@/stores/user'
 import { WeekType } from '@/types'
@@ -106,6 +101,7 @@ interface Props {
   interactive?: boolean
   maxWidth?: string
   cellSize?: number
+  hideSelectedWeek?: number | null // Week index to hide selection for
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -113,13 +109,15 @@ const props = withDefaults(defineProps<Props>(), {
   showNotes: true,
   interactive: true,
   maxWidth: '100%',
-  cellSize: 12
+  cellSize: 12,
+  hideSelectedWeek: null,
 })
 
 // Emits
 const emit = defineEmits<{
   weekClick: [weekIndex: number, weekData: GridWeek]
   weekHover: [weekIndex: number, weekData: GridWeek]
+  weekLeave: []
   weekFocus: [weekIndex: number, weekData: GridWeek]
 }>()
 
@@ -135,6 +133,8 @@ const selectedWeekIndex = ref<number | null>(null)
 const hoveredWeekIndex = ref<number | null>(null)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
+const containerRef = ref<HTMLElement | null>(null)
+const forceUpdate = ref(0)
 
 // Grid week interface
 interface GridWeek {
@@ -152,15 +152,43 @@ interface GridWeek {
 // Computed properties
 const totalWeeks = computed(() => weekCalculationStore.totalLifetimeWeeks || 0)
 const currentWeekIndex = computed(() => weekCalculationStore.currentWeekIndex || 0)
-const weeksLived = computed(() => weekCalculationStore.weeksLived || 0)
 
 const totalRows = computed(() => Math.ceil(totalWeeks.value / WEEKS_PER_ROW))
 
+// Calculate dynamic cell size for full-width mode
+const dynamicCellSize = computed(() => {
+  // Force reactivity update by accessing the value
+  const _forceUpdate = forceUpdate.value
+
+  if (props.maxWidth !== 'none' || !containerRef.value) {
+    return props.cellSize
+  }
+
+  // Get container width and calculate optimal cell size
+  const containerWidth = containerRef.value.clientWidth
+  const gapSpace = (WEEKS_PER_ROW - 1) * 1 // 1px gaps between cells
+  const padding = 2 // 1px padding on each side
+  const availableWidth = containerWidth - gapSpace - padding
+  const optimalCellSize = Math.floor(availableWidth / WEEKS_PER_ROW)
+
+  // Responsive minimum cell sizes based on screen width
+  let minCellSize = 6
+  if (containerWidth < 480) {
+    minCellSize = 4
+  } else if (containerWidth < 768) {
+    minCellSize = 5
+  }
+
+  const maxCellSize = 24 // Maximum cell size to prevent cells from becoming too large on very wide screens
+
+  return Math.max(minCellSize, Math.min(maxCellSize, optimalCellSize))
+})
+
 const gridStyles = computed(() => ({
   '--weeks-per-row': WEEKS_PER_ROW,
-  '--cell-size': `${props.cellSize}px`,
+  '--cell-size': `${dynamicCellSize.value}px`,
   '--max-width': props.maxWidth,
-  '--total-rows': totalRows.value
+  '--total-rows': totalRows.value,
 }))
 
 // Generate grid weeks data
@@ -170,13 +198,13 @@ const gridWeeks = computed((): GridWeek[] => {
   }
 
   const weeks: GridWeek[] = []
-  
+
   for (let i = 0; i < totalWeeks.value; i++) {
     const weekType = getWeekType(i)
     const isYearStart = isYearStartWeek(i)
     const isBirthday = isBirthdayWeek(i)
     const isHighlighted = props.highlightedWeeks.includes(i)
-    
+
     weeks.push({
       type: weekType,
       weekNumber: i,
@@ -186,7 +214,7 @@ const gridWeeks = computed((): GridWeek[] => {
       isBirthday,
       isYearStart,
       isHighlighted,
-      borderPriority: getBorderPriority(isYearStart, isBirthday, isHighlighted, i)
+      borderPriority: getBorderPriority(isYearStart, isBirthday, isHighlighted, i),
     })
   }
 
@@ -197,7 +225,7 @@ const gridWeeks = computed((): GridWeek[] => {
 function getWeekType(weekIndex: number): WeekType {
   const current = currentWeekIndex.value
   if (current === null) return WeekType.FUTURE
-  
+
   if (weekIndex < current) {
     return WeekType.PAST
   } else if (weekIndex === current) {
@@ -210,54 +238,58 @@ function getWeekType(weekIndex: number): WeekType {
 // Special date detection with improved accuracy
 function isYearStartWeek(weekIndex: number): boolean {
   if (!userStore.currentUser?.date_of_birth) return false
-  
+
   // Calculate which week corresponds to January 1st of each year
   const birthDate = new Date(userStore.currentUser.date_of_birth)
   const birthYear = birthDate.getFullYear()
-  
+
   // For each potential year, check if this week index falls on New Year's week
   const weeksPerYear = 52.1775 // More accurate weeks per year
   const estimatedYear = Math.floor(weekIndex / weeksPerYear)
-  
+
   for (let yearOffset = estimatedYear - 1; yearOffset <= estimatedYear + 1; yearOffset++) {
     const targetYear = birthYear + yearOffset
     const newYearDate = new Date(targetYear, 0, 1) // January 1st
-    const daysDiff = Math.floor((newYearDate.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24))
+    const daysDiff = Math.floor(
+      (newYearDate.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24),
+    )
     const newYearWeek = Math.floor(daysDiff / 7)
-    
-    if (Math.abs(newYearWeek - weekIndex) <= 1) {
+
+    if (newYearWeek === weekIndex) {
       return true
     }
   }
-  
+
   return false
 }
 
 function isBirthdayWeek(weekIndex: number): boolean {
   if (!userStore.currentUser?.date_of_birth) return false
-  
+
   const birthDate = new Date(userStore.currentUser.date_of_birth)
   const weeksPerYear = 52.1775
-  
+
   // Calculate which year this week falls in
   const estimatedYear = Math.floor(weekIndex / weeksPerYear)
-  
+
   // Check a range of years around the estimated year
   for (let yearOffset = estimatedYear - 1; yearOffset <= estimatedYear + 1; yearOffset++) {
     if (yearOffset < 0) continue
-    
+
     const birthdayThisYear = new Date(birthDate)
     birthdayThisYear.setFullYear(birthDate.getFullYear() + yearOffset)
-    
-    const daysDiff = Math.floor((birthdayThisYear.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24))
+
+    const daysDiff = Math.floor(
+      (birthdayThisYear.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24),
+    )
     const birthdayWeek = Math.floor(daysDiff / 7)
-    
-    // Check if this week is within 1 week of the birthday
-    if (Math.abs(birthdayWeek - weekIndex) <= 1) {
+
+    // Check if this week is exactly the birthday week
+    if (birthdayWeek === weekIndex) {
       return true
     }
   }
-  
+
   return false
 }
 
@@ -277,46 +309,46 @@ interface SpecialDate {
 
 function getSpecialDates(weekIndex: number): SpecialDate[] {
   const specialDates: SpecialDate[] = []
-  
+
   if (isBirthdayWeek(weekIndex)) {
     const age = Math.floor(weekIndex / 52.1775)
     const isDecade = age > 0 && age % 10 === 0
     const isMilestone = age > 0 && (age % 25 === 0 || age % 50 === 0)
-    
+
     specialDates.push({
       type: 'birthday',
       priority: getPriorityForBirthday(age, isMilestone, isDecade),
-      label: `${age}${getOrdinalSuffix(age)} Birthday`
+      label: `${age}${getOrdinalSuffix(age)} Birthday`,
     })
-    
+
     if (isDecade && age % 50 !== 0 && age % 25 !== 0) {
       specialDates.push({
         type: 'decade',
         priority: 8,
-        label: `${age}s Begin`
+        label: `${age}s Begin`,
       })
     }
   }
-  
+
   if (isYearStartWeek(weekIndex)) {
     const year = Math.floor(weekIndex / 52.1775) + 1
     specialDates.push({
       type: 'yearStart',
       priority: 5,
-      label: `Year ${year} Begins`
+      label: `Year ${year} Begins`,
     })
   }
-  
+
   // Quarter-life markers (approximately every 13 weeks)
   if (weekIndex > 0 && weekIndex % 13 === 0) {
     const quarter = Math.floor(weekIndex / 13)
     specialDates.push({
       type: 'quarter',
       priority: 2,
-      label: `Quarter ${quarter}`
+      label: `Quarter ${quarter}`,
     })
   }
-  
+
   return specialDates
 }
 
@@ -329,39 +361,48 @@ function getPriorityForBirthday(age: number, isMilestone: boolean, isDecade: boo
 function getOrdinalSuffix(num: number): string {
   const lastDigit = num % 10
   const lastTwoDigits = num % 100
-  
+
   if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
     return 'th'
   }
-  
+
   switch (lastDigit) {
-    case 1: return 'st'
-    case 2: return 'nd'
-    case 3: return 'rd'
-    default: return 'th'
+    case 1:
+      return 'st'
+    case 2:
+      return 'nd'
+    case 3:
+      return 'rd'
+    default:
+      return 'th'
   }
 }
 
 // Border priority for conflict resolution
-function getBorderPriority(isYearStart: boolean, isBirthday: boolean, isHighlighted: boolean, weekIndex: number): number {
+function getBorderPriority(
+  isYearStart: boolean,
+  isBirthday: boolean,
+  isHighlighted: boolean,
+  weekIndex: number,
+): number {
   let priority = 0
-  
+
   // User highlights have highest priority
   if (isHighlighted) priority += 100
-  
+
   // Get all special dates for this week
   const specialDates = getSpecialDates(weekIndex)
   const maxSpecialPriority = specialDates.reduce((max, date) => Math.max(max, date.priority), 0)
   priority += maxSpecialPriority
-  
+
   // Legacy support for existing boolean flags
-  if (isBirthday && !specialDates.some(d => d.type === 'birthday')) {
+  if (isBirthday && !specialDates.some((d) => d.type === 'birthday')) {
     priority += 10
   }
-  if (isYearStart && !specialDates.some(d => d.type === 'yearStart')) {
+  if (isYearStart && !specialDates.some((d) => d.type === 'yearStart')) {
     priority += 5
   }
-  
+
   return priority
 }
 
@@ -369,23 +410,23 @@ function getBorderPriority(isYearStart: boolean, isBirthday: boolean, isHighligh
 function getBorderStyles(week: GridWeek, index: number): Record<string, string> {
   const styles: Record<string, string> = {}
   const specialDates = getSpecialDates(index)
-  
+
   if (specialDates.length === 0 && !week.isHighlighted) {
     return styles
   }
-  
+
   // Sort special dates by priority (highest first)
   const sortedDates = [...specialDates].sort((a, b) => b.priority - a.priority)
-  
+
   if (week.isHighlighted) {
     // Highlighted weeks get outline, special dates get border
     styles.outline = `3px solid ${getThemeColorVar('highlight')}`
     styles.outlineOffset = '2px'
-    
+
     if (sortedDates.length > 0) {
       const primaryDate = sortedDates[0]!
       styles.border = `2px solid ${getThemeColorVar(getBorderColor(primaryDate.type))}`
-      
+
       // Add inner shadow for secondary special dates
       if (sortedDates.length > 1) {
         const secondaryDate = sortedDates[1]!
@@ -395,7 +436,7 @@ function getBorderStyles(week: GridWeek, index: number): Record<string, string> 
   } else if (sortedDates.length > 0) {
     const primaryDate = sortedDates[0]!
     styles.border = `2px solid ${getThemeColorVar(getBorderColor(primaryDate.type))}`
-    
+
     // Handle multiple special dates with gradient or dual borders
     if (sortedDates.length > 1) {
       const secondaryDate = sortedDates[1]!
@@ -404,25 +445,31 @@ function getBorderStyles(week: GridWeek, index: number): Record<string, string> 
         styles.boxShadow = `inset 0 0 0 1px ${getThemeColorVar(getBorderColor(secondaryDate.type))}`
       } else {
         // Multiple dates: create gradient border
-        const colors = sortedDates.slice(0, 3).map(date => 
-          getThemeColorVar(getBorderColor(date.type))
-        )
+        const colors = sortedDates
+          .slice(0, 3)
+          .map((date) => getThemeColorVar(getBorderColor(date.type)))
         styles.borderImage = `linear-gradient(45deg, ${colors.join(', ')}) 1`
       }
     }
   }
-  
+
   return styles
 }
 
 function getBorderColor(dateType: string): string {
   switch (dateType) {
-    case 'birthday': return 'birthday'
-    case 'yearStart': return 'year-start'
-    case 'milestone': return 'milestone'
-    case 'decade': return 'decade'
-    case 'quarter': return 'quarter'
-    default: return 'special-date'
+    case 'birthday':
+      return 'birthday'
+    case 'yearStart':
+      return 'year-start'
+    case 'milestone':
+      return 'milestone'
+    case 'decade':
+      return 'decade'
+    case 'quarter':
+      return 'quarter'
+    default:
+      return 'special-date'
   }
 }
 
@@ -441,6 +488,9 @@ function getThemeColorVar(colorName: string): string {
 
 // Styling functions
 function getWeekClasses(week: GridWeek, index: number) {
+  const isSelectedButNotHidden =
+    selectedWeekIndex.value === index && props.hideSelectedWeek !== index
+
   return {
     [`week-${week.type}`]: true,
     'has-notes': week.hasNotes,
@@ -448,20 +498,20 @@ function getWeekClasses(week: GridWeek, index: number) {
     'is-year-start': week.isYearStart,
     'is-highlighted': week.isHighlighted,
     'is-current': index === currentWeekIndex.value,
-    'is-selected': selectedWeekIndex.value === index,
+    'is-selected': isSelectedButNotHidden,
     'is-hovered': hoveredWeekIndex.value === index,
     [`border-priority-${week.borderPriority}`]: week.borderPriority > 0,
-    [`theme-${currentTheme.value}`]: true
+    [`theme-${currentTheme.value}`]: true,
   }
 }
 
 function getWeekStyles(week: GridWeek, index: number) {
   const styles: Record<string, string> = {}
-  
+
   // Base background color based on week type
   const opacity = getWeekOpacity(week, index)
   styles.opacity = opacity.toString()
-  
+
   // Apply enhanced border system
   const borderStyles = getBorderStyles(week, index)
   Object.assign(styles, borderStyles)
@@ -481,7 +531,7 @@ function getWeekStyles(week: GridWeek, index: number) {
 function getWeekOpacity(week: GridWeek, index: number): number {
   // Base opacity based on week type
   let baseOpacity = 1
-  
+
   switch (week.type) {
     case WeekType.PAST:
       baseOpacity = 0.8
@@ -493,22 +543,27 @@ function getWeekOpacity(week: GridWeek, index: number): number {
       baseOpacity = 0.4
       break
   }
-  
+
   // Increase opacity for special dates
   if (week.isSpecialDate) {
     baseOpacity = Math.min(1, baseOpacity + 0.2)
   }
-  
+
   // Increase opacity for notes
   if (week.hasNotes) {
     baseOpacity = Math.min(1, baseOpacity + 0.1)
   }
-  
+
   // Highlighted weeks are always fully opaque
   if (week.isHighlighted) {
     return 1
   }
-  
+
+  // Selected weeks have increased opacity for emphasis
+  if (selectedWeekIndex.value === index) {
+    return 0.0
+  }
+
   return baseOpacity
 }
 
@@ -518,9 +573,9 @@ function getWeekAriaLabel(week: GridWeek, index: number): string {
   const year = Math.floor(index / 52) + 1
   const weekInYear = (index % 52) + 1
   const specialDates = getSpecialDates(index)
-  
+
   let label = `Week ${weekNumber}, Year ${year} of life, Week ${weekInYear} of year`
-  
+
   // Add week type with more descriptive language
   switch (week.type) {
     case WeekType.PAST:
@@ -533,42 +588,42 @@ function getWeekAriaLabel(week: GridWeek, index: number): string {
       label += ', upcoming week'
       break
   }
-  
+
   // Add special dates information
   if (specialDates.length > 0) {
-    const descriptions = specialDates.map(date => date.label).join(', ')
+    const descriptions = specialDates.map((date) => date.label).join(', ')
     label += `, Special: ${descriptions}`
   }
-  
+
   // Add notes information
   if (week.hasNotes) {
     label += ', contains notes'
   }
-  
+
   // Add highlighting status
   if (week.isHighlighted) {
     label += ', highlighted week'
   }
-  
+
   // Add selection status
   if (selectedWeekIndex.value === index) {
     label += ', currently selected'
   }
-  
+
   return label
 }
 
 // Enhanced accessibility announcements
 function announceWeekChange(weekIndex: number, weekData: GridWeek) {
   if (!props.interactive) return
-  
+
   const announcement = getWeekAriaLabel(weekData, weekIndex)
-  
+
   // Create live region announcement
   const liveRegion = document.getElementById('week-announcements')
   if (liveRegion) {
     liveRegion.textContent = announcement
-    
+
     // Clear after a delay to prepare for next announcement
     setTimeout(() => {
       liveRegion.textContent = ''
@@ -578,10 +633,10 @@ function announceWeekChange(weekIndex: number, weekData: GridWeek) {
 
 function handleWeekClick(index: number) {
   if (!props.interactive) return
-  
+
   const weekData = gridWeeks.value[index]
   if (!weekData) return
-  
+
   selectedWeekIndex.value = index
   emit('weekClick', index, weekData)
 }
@@ -589,7 +644,7 @@ function handleWeekClick(index: number) {
 function handleWeekFocus(index: number) {
   const weekData = gridWeeks.value[index]
   if (!weekData) return
-  
+
   selectedWeekIndex.value = index
   announceWeekChange(index, weekData)
   emit('weekFocus', index, weekData)
@@ -598,13 +653,14 @@ function handleWeekFocus(index: number) {
 function handleWeekHover(index: number) {
   const weekData = gridWeeks.value[index]
   if (!weekData) return
-  
+
   hoveredWeekIndex.value = index
   emit('weekHover', index, weekData)
 }
 
 function handleWeekHoverEnd() {
   hoveredWeekIndex.value = null
+  emit('weekLeave')
 }
 
 // Enhanced keyboard navigation
@@ -641,11 +697,11 @@ function handleKeyNavigation(event: KeyboardEvent) {
       break
     case 'PageDown':
       // Jump 10 rows down
-      newIndex = Math.min(currentIndex + (WEEKS_PER_ROW * 10), totalWeeks.value - 1)
+      newIndex = Math.min(currentIndex + WEEKS_PER_ROW * 10, totalWeeks.value - 1)
       break
     case 'PageUp':
       // Jump 10 rows up
-      newIndex = Math.max(currentIndex - (WEEKS_PER_ROW * 10), 0)
+      newIndex = Math.max(currentIndex - WEEKS_PER_ROW * 10, 0)
       break
     case 'c':
       // Jump to current week
@@ -676,7 +732,7 @@ function handleKeyNavigation(event: KeyboardEvent) {
   if (newIndex !== currentIndex) {
     event.preventDefault()
     selectedWeekIndex.value = newIndex
-    
+
     // Focus the new cell and announce the change
     nextTick(() => {
       const newCell = document.querySelector(`[data-week-index="${newIndex}"]`) as HTMLElement
@@ -729,7 +785,7 @@ async function loadGridData() {
     await weekCalculationStore.calculateLifeProgress({
       date_of_birth: userStore.currentUser!.date_of_birth!,
       lifespan_years: userStore.userLifespan,
-      timezone: userStore.userTimezone
+      timezone: userStore.userTimezone,
     })
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load grid data'
@@ -738,13 +794,30 @@ async function loadGridData() {
   }
 }
 
+// Resize observer for responsive cell sizing
+let resizeObserver: ResizeObserver | null = null
+
 // Lifecycle
 onMounted(() => {
   loadGridData()
-  
+
   // Set initial selection to current week
   if (currentWeekIndex.value !== null) {
     selectedWeekIndex.value = currentWeekIndex.value
+  }
+
+  // Set up resize observer for dynamic cell sizing
+  if (containerRef.value && props.maxWidth === 'none') {
+    resizeObserver = new ResizeObserver(() => {
+      forceUpdate.value += 1
+    })
+    resizeObserver.observe(containerRef.value)
+  }
+})
+
+onUnmounted(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect()
   }
 })
 
@@ -759,6 +832,11 @@ watch(() => userStore.userLifespan, loadGridData)
   max-width: var(--max-width);
   margin: 0 auto;
   position: relative;
+}
+
+.lifetime-grid-container[style*='--max-width: none'] {
+  max-width: none;
+  margin: 0;
 }
 
 .sr-only {
@@ -792,8 +870,12 @@ watch(() => userStore.userLifespan, loadGridData)
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .error-state {
@@ -961,15 +1043,16 @@ watch(() => userStore.userLifespan, loadGridData)
 
 /* Responsive design */
 @media (max-width: 768px) {
-  .lifetime-grid {
-    grid-template-columns: repeat(26, calc(var(--cell-size) * 0.8));
+  /* For fixed max-width grids, reduce cell size */
+  .lifetime-grid-container:not([style*='--max-width: none']) .lifetime-grid {
+    grid-template-columns: repeat(var(--weeks-per-row), calc(var(--cell-size) * 0.8));
     grid-auto-rows: calc(var(--cell-size) * 0.8);
   }
 }
 
 @media (max-width: 480px) {
-  .lifetime-grid {
-    grid-template-columns: repeat(13, calc(var(--cell-size) * 0.7));
+  .lifetime-grid-container:not([style*='--max-width: none']) .lifetime-grid {
+    grid-template-columns: repeat(var(--weeks-per-row), calc(var(--cell-size) * 0.6));
     grid-auto-rows: calc(var(--cell-size) * 0.7);
   }
 }
@@ -987,7 +1070,7 @@ watch(() => userStore.userLifespan, loadGridData)
   --color-week-current: #f59e0b;
   --color-week-current-border: #d97706;
   --color-week-future: #e5e7eb;
-  
+
   /* Special date colors */
   --color-birthday: #ef4444;
   --color-year-start: #10b981;
@@ -995,13 +1078,13 @@ watch(() => userStore.userLifespan, loadGridData)
   --color-decade: #8b5cf6;
   --color-quarter: #6b7280;
   --color-special-date: #f97316;
-  
+
   /* Interactive colors */
   --color-highlight: #3b82f6;
   --color-focus: #2563eb;
   --color-selection: #1d4ed8;
   --color-hover: #3730a3;
-  
+
   /* UI colors */
   --color-notes-indicator: #6366f1;
   --color-special-marker: #f59e0b;
@@ -1016,7 +1099,7 @@ watch(() => userStore.userLifespan, loadGridData)
 }
 
 /* Light theme explicit overrides */
-[data-theme="light"] {
+[data-theme='light'] {
   --color-week-past: #8b5cf6;
   --color-week-future: #e5e7eb;
   --color-grid-background: #f5f5f5;
@@ -1025,24 +1108,24 @@ watch(() => userStore.userLifespan, loadGridData)
 }
 
 /* Dark theme support */
-[data-theme="dark"] {
+[data-theme='dark'] {
   /* Week state colors - dark theme */
   --color-week-past: #7c3aed;
   --color-week-future: #374151;
-  
+
   /* Special date colors - dark theme */
   --color-birthday: #f87171;
   --color-year-start: #34d399;
   --color-milestone: #f472b6;
   --color-decade: #a78bfa;
   --color-quarter: #9ca3af;
-  
+
   /* Interactive colors - dark theme */
   --color-highlight: #60a5fa;
   --color-focus: #3b82f6;
   --color-selection: #2563eb;
   --color-hover: #6366f1;
-  
+
   /* UI colors - dark theme */
   --color-notes-indicator: #818cf8;
   --color-grid-background: #1f2937;
@@ -1057,20 +1140,20 @@ watch(() => userStore.userLifespan, loadGridData)
     /* Week state colors - dark theme */
     --color-week-past: #7c3aed;
     --color-week-future: #374151;
-    
+
     /* Special date colors - dark theme */
     --color-birthday: #f87171;
     --color-year-start: #34d399;
     --color-milestone: #f472b6;
     --color-decade: #a78bfa;
     --color-quarter: #9ca3af;
-    
+
     /* Interactive colors - dark theme */
     --color-highlight: #60a5fa;
     --color-focus: #3b82f6;
     --color-selection: #2563eb;
     --color-hover: #6366f1;
-    
+
     /* UI colors - dark theme */
     --color-notes-indicator: #818cf8;
     --color-grid-background: #1f2937;

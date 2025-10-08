@@ -2,7 +2,7 @@
   <div class="about">
     <h1>About LifeTime AI-First</h1>
     <p>This is the frontend application for the LifeTime AI-First project.</p>
-    
+
     <div class="tech-stack">
       <h2>Technology Stack</h2>
       <div class="tech-grid">

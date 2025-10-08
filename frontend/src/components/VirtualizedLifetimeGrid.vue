@@ -8,17 +8,13 @@
     <!-- Screen reader description -->
     <div id="grid-description" class="sr-only">
       A virtual scrollable representation of your lifetime in weeks. Each cell represents one week.
-      Past weeks are shown in darker colors, current week is highlighted, and future weeks are in lighter colors.
-      Use arrow keys to navigate the grid, Enter or Space to select a week, Home to go to first week, End to go to last week.
+      Past weeks are shown in darker colors, current week is highlighted, and future weeks are in
+      lighter colors. Use arrow keys to navigate the grid, Enter or Space to select a week, Home to
+      go to first week, End to go to last week.
     </div>
-    
+
     <!-- Live region for screen reader announcements -->
-    <div 
-      id="week-announcements" 
-      class="sr-only" 
-      aria-live="polite" 
-      aria-atomic="true"
-    ></div>
+    <div id="week-announcements" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
     <!-- Loading state -->
     <div v-if="isLoading" class="loading-overlay" aria-live="polite">
@@ -29,9 +25,7 @@
     <!-- Error state -->
     <div v-if="error" class="error-state" role="alert">
       <p>{{ error }}</p>
-      <button @click="handleRetry" class="retry-button">
-        Retry
-      </button>
+      <button @click="handleRetry" class="retry-button">Retry</button>
     </div>
 
     <!-- Performance metrics (debug mode) -->
@@ -42,7 +36,10 @@
         <div>Cache hits: {{ lazyLoading.metrics.value.cacheHits }}</div>
         <div>Cache hit ratio: {{ (lazyLoading.cacheHitRatio.value * 100).toFixed(1) }}%</div>
         <div>Scroll position: {{ Math.round(virtualScrolling.scrollTop.value) }}px</div>
-        <div>Total rows rendered: {{ virtualScrolling.endRow.value - virtualScrolling.startRow.value + 1 }}</div>
+        <div>
+          Total rows rendered:
+          {{ virtualScrolling.endRow.value - virtualScrolling.startRow.value + 1 }}
+        </div>
       </div>
     </div>
 
@@ -58,17 +55,11 @@
       tabindex="0"
     >
       <!-- Virtual scrollable content with total height -->
-      <div
-        class="virtual-content"
-        :style="contentStyles"
-      >
+      <div class="virtual-content" :style="contentStyles">
         <!-- Visible grid rows -->
-        <div
-          class="virtual-grid"
-          :style="gridStyles"
-        >
+        <div class="virtual-grid" :style="gridStyles">
           <div
-            v-for="weekIndex in virtualScrolling.visibleItems"
+            v-for="weekIndex in virtualScrolling.visibleItems.value"
             :key="`week-${weekIndex}`"
             class="week-cell"
             :class="getWeekClasses(weekIndex)"
@@ -83,8 +74,16 @@
             @mouseleave="handleWeekHoverEnd"
           >
             <!-- Week content indicators -->
-            <div v-if="getWeekData(weekIndex)?.hasNotes" class="notes-indicator" aria-hidden="true"></div>
-            <div v-if="isSpecialWeek(weekIndex)" class="special-marker" :title="getSpecialDateType(weekIndex)"></div>
+            <div
+              v-if="getWeekData(weekIndex)?.hasNotes"
+              class="notes-indicator"
+              aria-hidden="true"
+            ></div>
+            <div
+              v-if="isSpecialWeek(weekIndex)"
+              class="special-marker"
+              :title="getSpecialDateType(weekIndex)"
+            ></div>
           </div>
         </div>
       </div>
@@ -92,15 +91,9 @@
 
     <!-- Grid controls -->
     <div class="grid-controls">
-      <button @click="scrollToCurrentWeek" class="control-button">
-        Go to Current Week
-      </button>
-      <button @click="scrollToTop" class="control-button">
-        Go to Start
-      </button>
-      <button @click="scrollToBottom" class="control-button">
-        Go to End
-      </button>
+      <button @click="scrollToCurrentWeek" class="control-button">Go to Current Week</button>
+      <button @click="scrollToTop" class="control-button">Go to Start</button>
+      <button @click="scrollToBottom" class="control-button">Go to End</button>
       <button @click="togglePerformanceMetrics" class="control-button" v-if="isDevelopment">
         {{ showPerformanceMetrics ? 'Hide' : 'Show' }} Metrics
       </button>
@@ -159,15 +152,16 @@ const props = withDefaults(defineProps<Props>(), {
   maxWidth: '100%',
   cellSize: 12,
   containerHeight: 600,
-  showPerformanceMetrics: false
+  showPerformanceMetrics: false,
 })
 
 // Emits
 const emit = defineEmits<{
   weekClick: [weekIndex: number]
   weekHover: [weekIndex: number]
+  weekLeave: []
   weekFocus: [weekIndex: number]
-  scrollPositionChange: [position: { top: number, left: number }]
+  scrollPositionChange: [position: { top: number; left: number }]
 }>()
 
 // Constants
@@ -194,7 +188,6 @@ const gridContainerRef = ref<HTMLElement>()
 // Computed properties
 const totalWeeks = computed(() => weekCalculationStore.totalLifetimeWeeks || 0)
 const currentWeekIndex = computed(() => weekCalculationStore.currentWeekIndex || 0)
-const weeksLived = computed(() => weekCalculationStore.weeksLived || 0)
 
 // Responsive design
 const responsiveConfig = computed(() => {
@@ -215,7 +208,7 @@ const virtualScrolling = useGridVirtualScrolling({
   cellWidth: responsiveConfig.value.cellSize,
   containerHeight: props.containerHeight,
   gap: CELL_GAP,
-  overscan: 2
+  overscan: 2,
 })
 
 // Lazy loading setup for week data
@@ -228,14 +221,14 @@ const lazyLoading = useWeekDataLazyLoading({
         weekIndex: i,
         hasNotes: false, // This would come from the notes API
         noteCount: 0,
-        specialDates: getSpecialDatesForWeek(i)
+        specialDates: getSpecialDatesForWeek(i),
       })
     }
     return weekData
   },
   prefetchCount: 20,
   cacheSize: Math.min(2000, totalWeeks.value),
-  debug: isDevelopment
+  debug: isDevelopment,
 })
 
 // Scroll persistence
@@ -244,7 +237,7 @@ const scrollPersistence = useGridScrollPersistence({
   storage: 'localStorage',
   selectedIndex: selectedWeekIndex.value || undefined,
   totalItems: totalWeeks.value,
-  debug: isDevelopment
+  debug: isDevelopment,
 })
 
 // Connect the scroll container
@@ -261,11 +254,11 @@ const containerStyles = computed(() => ({
   '--cell-gap': `${CELL_GAP}px`,
   '--columns': responsiveConfig.value.columns,
   '--max-width': props.maxWidth,
-  height: `${props.containerHeight}px`
+  height: `${props.containerHeight}px`,
 }))
 
 const contentStyles = computed(() => ({
-  height: `${virtualScrolling.totalHeight}px`
+  height: `${virtualScrolling.totalHeight}px`,
 }))
 
 const gridStyles = computed(() => ({
@@ -273,11 +266,10 @@ const gridStyles = computed(() => ({
   display: 'grid',
   gridTemplateColumns: `repeat(${responsiveConfig.value.columns}, ${responsiveConfig.value.cellSize}px)`,
   gap: `${CELL_GAP}px`,
-  padding: `${CELL_GAP}px`
+  padding: `${CELL_GAP}px`,
 }))
 
 // Week data access
-const weekDataCache = computed(() => lazyLoading.cache)
 
 const getWeekData = (weekIndex: number) => {
   // Access cache directly for synchronous access in templates
@@ -290,7 +282,7 @@ const getWeekData = (weekIndex: number) => {
 const getWeekType = (weekIndex: number): WeekType => {
   const current = currentWeekIndex.value
   if (current === null) return WeekType.FUTURE
-  
+
   if (weekIndex < current) {
     return WeekType.PAST
   } else if (weekIndex === current) {
@@ -306,18 +298,21 @@ const isSpecialWeek = (weekIndex: number): boolean => {
 
 const isBirthdayWeek = (weekIndex: number): boolean => {
   if (!userStore.currentUser?.date_of_birth) return false
-  
+
   // Simplified calculation - in real implementation, this would be more precise
   const weekInYear = weekIndex % 52
   const birthDate = new Date(userStore.currentUser.date_of_birth)
-  const birthWeekInYear = Math.floor((birthDate.getTime() - new Date(birthDate.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000))
-  
-  return Math.abs(weekInYear - birthWeekInYear) <= 1
+  const birthWeekInYear = Math.floor(
+    (birthDate.getTime() - new Date(birthDate.getFullYear(), 0, 1).getTime()) /
+      (7 * 24 * 60 * 60 * 1000),
+  )
+
+  return weekInYear === birthWeekInYear
 }
 
 const isYearStartWeek = (weekIndex: number): boolean => {
   const weekInYear = weekIndex % 52
-  return weekInYear <= 1 // First week or two of the year
+  return weekInYear === 0 // Only the first week of the year
 }
 
 const getSpecialDatesForWeek = (weekIndex: number): string[] => {
@@ -336,7 +331,7 @@ const getSpecialDateType = (weekIndex: number): string => {
 const getWeekClasses = (weekIndex: number) => {
   const weekType = getWeekType(weekIndex)
   const weekData = getWeekData(weekIndex)
-  
+
   return {
     [`week-${weekType}`]: true,
     'has-notes': weekData?.hasNotes || false,
@@ -345,16 +340,16 @@ const getWeekClasses = (weekIndex: number) => {
     'is-highlighted': props.highlightedWeeks.includes(weekIndex),
     'is-current': weekIndex === currentWeekIndex.value,
     'is-selected': selectedWeekIndex.value === weekIndex,
-    'is-hovered': hoveredWeekIndex.value === weekIndex
+    'is-hovered': hoveredWeekIndex.value === weekIndex,
   }
 }
 
 const getWeekStyles = (weekIndex: number) => {
   const styles: Record<string, string> = {}
-  
+
   // Position in virtual grid is handled by CSS Grid
   // Add any specific styling based on week properties
-  
+
   if (selectedWeekIndex.value === weekIndex) {
     styles.transform = 'scale(1.15)'
     styles.zIndex = '20'
@@ -372,9 +367,9 @@ const getWeekAriaLabel = (weekIndex: number): string => {
   const year = Math.floor(weekIndex / 52) + 1
   const weekInYear = (weekIndex % 52) + 1
   const weekType = getWeekType(weekIndex)
-  
+
   let label = `Week ${weekNumber}, Year ${year} of life, Week ${weekInYear} of year`
-  
+
   switch (weekType) {
     case WeekType.PAST:
       label += ', completed week'
@@ -386,39 +381,39 @@ const getWeekAriaLabel = (weekIndex: number): string => {
       label += ', upcoming week'
       break
   }
-  
+
   const specialDates = getSpecialDatesForWeek(weekIndex)
   if (specialDates.length > 0) {
     label += `, Special: ${specialDates.join(', ')}`
   }
-  
+
   const weekData = getWeekData(weekIndex)
   if (weekData?.hasNotes) {
     label += ', contains notes'
   }
-  
+
   if (props.highlightedWeeks.includes(weekIndex)) {
     label += ', highlighted week'
   }
-  
+
   if (selectedWeekIndex.value === weekIndex) {
     label += ', currently selected'
   }
-  
+
   return label
 }
 
 // Event handlers
 const handleWeekClick = (weekIndex: number) => {
   if (!props.interactive) return
-  
+
   selectedWeekIndex.value = weekIndex
   emit('weekClick', weekIndex)
 }
 
 const handleWeekFocus = (weekIndex: number) => {
   if (!props.interactive) return
-  
+
   selectedWeekIndex.value = weekIndex
   announceWeekChange(weekIndex)
   emit('weekFocus', weekIndex)
@@ -431,11 +426,12 @@ const handleWeekHover = (weekIndex: number) => {
 
 const handleWeekHoverEnd = () => {
   hoveredWeekIndex.value = null
+  emit('weekLeave')
 }
 
 const announceWeekChange = (weekIndex: number) => {
   if (!props.interactive) return
-  
+
   const announcement = getWeekAriaLabel(weekIndex)
   const liveRegion = document.getElementById('week-announcements')
   if (liveRegion) {
@@ -503,10 +499,10 @@ const handleKeyNavigation = (event: KeyboardEvent) => {
       newIndex = totalWeeks.value - 1
       break
     case 'PageDown':
-      newIndex = Math.min(currentIndex + (columns * 10), totalWeeks.value - 1)
+      newIndex = Math.min(currentIndex + columns * 10, totalWeeks.value - 1)
       break
     case 'PageUp':
-      newIndex = Math.max(currentIndex - (columns * 10), 0)
+      newIndex = Math.max(currentIndex - columns * 10, 0)
       break
     case 'c':
       if (currentWeekIndex.value !== null) {
@@ -528,7 +524,7 @@ const handleKeyNavigation = (event: KeyboardEvent) => {
     event.preventDefault()
     selectedWeekIndex.value = newIndex
     virtualScrolling.ensureItemVisible(newIndex)
-    
+
     nextTick(() => {
       const newCell = document.querySelector(`[data-week-index="${newIndex}"]`) as HTMLElement
       if (newCell) {
@@ -558,7 +554,7 @@ const loadGridData = async () => {
     await weekCalculationStore.calculateLifeProgress({
       date_of_birth: userStore.currentUser!.date_of_birth!,
       lifespan_years: userStore.userLifespan,
-      timezone: userStore.userTimezone
+      timezone: userStore.userTimezone,
     })
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load grid data'
@@ -568,24 +564,31 @@ const loadGridData = async () => {
 }
 
 // Watch for virtual scrolling changes and load data
-watch(() => virtualScrolling.visibleItems.value, async (visibleItems) => {
-  if (visibleItems.length > 0) {
-    await lazyLoading.loadVisibleWeeks(visibleItems)
-  }
-}, { immediate: true })
+watch(
+  () => virtualScrolling.visibleItems.value,
+  async (visibleItems) => {
+    if (visibleItems.length > 0) {
+      await lazyLoading.loadVisibleWeeks(visibleItems)
+    }
+  },
+  { immediate: true },
+)
 
 // Watch for scroll position changes
-watch(() => virtualScrolling.scrollTop.value, (scrollTop) => {
-  emit('scrollPositionChange', { 
-    top: scrollTop, 
-    left: 0 
-  })
-})
+watch(
+  () => virtualScrolling.scrollTop.value,
+  (scrollTop) => {
+    emit('scrollPositionChange', {
+      top: scrollTop,
+      left: 0,
+    })
+  },
+)
 
 // Lifecycle
 onMounted(async () => {
   await loadGridData()
-  
+
   // Set initial selection to current week
   if (currentWeekIndex.value !== null) {
     selectedWeekIndex.value = currentWeekIndex.value
@@ -634,7 +637,10 @@ watch(() => userStore.userLifespan, loadGridData)
   max-width: var(--max-width);
   margin: 0 auto;
   position: relative;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 .sr-only {
@@ -668,8 +674,12 @@ watch(() => userStore.userLifespan, loadGridData)
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .error-state {
@@ -927,12 +937,12 @@ watch(() => userStore.userLifespan, loadGridData)
   .grid-controls {
     justify-content: center;
   }
-  
+
   .control-button {
     font-size: 0.8rem;
     padding: 0.4rem 0.8rem;
   }
-  
+
   .performance-metrics {
     font-size: 0.7rem;
   }
@@ -942,12 +952,12 @@ watch(() => userStore.userLifespan, loadGridData)
   .lifetime-grid-container {
     padding: 0.5rem;
   }
-  
+
   .grid-legend {
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .metrics-grid {
     grid-template-columns: 1fr;
   }

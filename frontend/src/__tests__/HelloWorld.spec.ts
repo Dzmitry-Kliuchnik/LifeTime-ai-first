@@ -13,7 +13,7 @@ describe('HelloWorld.vue', () => {
     const title = 'Custom Title'
     const message = 'Custom Message'
     const wrapper = mount(HelloWorld, {
-      props: { title, message }
+      props: { title, message },
     })
     expect(wrapper.text()).toContain(title)
     expect(wrapper.text()).toContain(message)
@@ -22,22 +22,22 @@ describe('HelloWorld.vue', () => {
   it('increments counter when button is clicked', async () => {
     const wrapper = mount(HelloWorld)
     const button = wrapper.find('button')
-    
+
     expect(button.text()).toContain('Count: 0')
     await button.trigger('click')
-    
+
     // Wait for the async operation to complete
-    await new Promise(resolve => setTimeout(resolve, 600))
+    await new Promise((resolve) => setTimeout(resolve, 600))
     expect(button.text()).toContain('Count: 1')
   })
 
   it('shows loading state when button is clicked', async () => {
     const wrapper = mount(HelloWorld)
     const button = wrapper.find('button')
-    
+
     expect(button.text()).toContain('Click me!')
     button.trigger('click')
-    
+
     // Check loading state immediately after click
     await wrapper.vm.$nextTick()
     expect(button.text()).toContain('Loading...')

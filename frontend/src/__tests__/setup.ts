@@ -7,9 +7,9 @@ Object.defineProperty(window, 'localStorage', {
     getItem: vi.fn(),
     setItem: vi.fn(),
     removeItem: vi.fn(),
-    clear: vi.fn()
+    clear: vi.fn(),
   },
-  writable: true
+  writable: true,
 })
 
 Object.defineProperty(window, 'sessionStorage', {
@@ -17,9 +17,9 @@ Object.defineProperty(window, 'sessionStorage', {
     getItem: vi.fn(),
     setItem: vi.fn(),
     removeItem: vi.fn(),
-    clear: vi.fn()
+    clear: vi.fn(),
   },
-  writable: true
+  writable: true,
 })
 
 // Mock Intl API for timezone testing
@@ -27,20 +27,18 @@ Object.defineProperty(global, 'Intl', {
   value: {
     DateTimeFormat: vi.fn(() => ({
       resolvedOptions: () => ({ timeZone: 'America/New_York' }),
-      formatToParts: () => [
-        { type: 'timeZoneName', value: 'EST' }
-      ],
-      format: () => 'mocked date'
-    }))
+      formatToParts: () => [{ type: 'timeZoneName', value: 'EST' }],
+      format: () => 'mocked date',
+    })),
   },
-  writable: true
+  writable: true,
 })
 
 // Mock console methods to reduce test noise
 global.console = {
   ...console,
   warn: vi.fn(),
-  error: vi.fn()
+  error: vi.fn(),
 }
 
 // Mock axios for all tests
@@ -54,8 +52,8 @@ vi.mock('axios', () => ({
       delete: vi.fn(),
       interceptors: {
         request: { use: vi.fn() },
-        response: { use: vi.fn() }
-      }
+        response: { use: vi.fn() },
+      },
     })),
     get: vi.fn(),
     post: vi.fn(),
@@ -64,9 +62,9 @@ vi.mock('axios', () => ({
     delete: vi.fn(),
     interceptors: {
       request: { use: vi.fn() },
-      response: { use: vi.fn() }
-    }
-  }
+      response: { use: vi.fn() },
+    },
+  },
 }))
 
 // Setup DOM environment

@@ -38,19 +38,19 @@ export function useLazyLoading<T>(options: LazyLoadingOptions<T>) {
   const loadingState = ref<LoadingState>({
     isLoading: false,
     loadingRanges: [],
-    error: null
+    error: null,
   })
 
   // Track currently loading ranges to prevent duplicate requests
   const loadingRanges = ref<Set<string>>(new Set())
-  
+
   // Performance metrics
   const metrics = ref({
     cacheHits: 0,
     cacheMisses: 0,
     loadsTriggered: 0,
     itemsLoaded: 0,
-    prefetchHits: 0
+    prefetchHits: 0,
   })
 
   // Get cache hit ratio for debugging
@@ -91,7 +91,7 @@ export function useLazyLoading<T>(options: LazyLoadingOptions<T>) {
       data,
       timestamp: Date.now(),
       accessCount: 1,
-      lastAccessed: Date.now()
+      lastAccessed: Date.now(),
     }
 
     cache.value.set(index, entry)
@@ -147,7 +147,7 @@ export function useLazyLoading<T>(options: LazyLoadingOptions<T>) {
   // Load data for a range of indices
   const loadRange = async (startIndex: number, endIndex: number): Promise<void> => {
     const rangeKey = getRangeKey(startIndex, endIndex)
-    
+
     // Check if this range is already being loaded
     if (loadingRanges.value.has(rangeKey)) {
       if (debug.value) {
@@ -179,14 +179,14 @@ export function useLazyLoading<T>(options: LazyLoadingOptions<T>) {
 
     try {
       metrics.value.loadsTriggered++
-      
+
       if (debug.value) {
         console.log(`Loading range ${rangeKey}, uncached items: ${uncachedIndices.length}`)
       }
 
       // Load the data
       const data = await options.loadData(startIndex, endIndex)
-      
+
       // Cache the loaded data
       data.forEach((item, offset) => {
         const index = startIndex + offset
@@ -198,11 +198,10 @@ export function useLazyLoading<T>(options: LazyLoadingOptions<T>) {
       if (debug.value) {
         console.log(`Loaded ${data.length} items for range ${rangeKey}`)
       }
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load data'
       loadingState.value.error = errorMessage
-      
+
       if (debug.value) {
         console.error(`Failed to load range ${rangeKey}:`, error)
       }
@@ -210,7 +209,7 @@ export function useLazyLoading<T>(options: LazyLoadingOptions<T>) {
       // Clean up loading state
       loadingRanges.value.delete(rangeKey)
       loadingState.value.loadingRanges = loadingState.value.loadingRanges.filter(
-        range => getRangeKey(range.start, range.end) !== rangeKey
+        (range) => getRangeKey(range.start, range.end) !== rangeKey,
       )
       loadingState.value.isLoading = loadingState.value.loadingRanges.length > 0
     }
@@ -267,7 +266,7 @@ export function useLazyLoading<T>(options: LazyLoadingOptions<T>) {
       // Second pass: get the newly loaded items
       indices.forEach((index, i) => {
         if (!results[i]) {
-          results[i] = getCachedData(index)  
+          results[i] = getCachedData(index)
         }
       })
     }
@@ -288,25 +287,25 @@ export function useLazyLoading<T>(options: LazyLoadingOptions<T>) {
     size: cache.value.size,
     maxSize: cacheSize.value,
     hitRatio: cacheHitRatio.value,
-    metrics: { ...metrics.value }
+    metrics: { ...metrics.value },
   })
 
   // Preload specific items
   const preloadItems = async (indices: number[]): Promise<void> => {
-    const uncachedIndices = indices.filter(index => !isDataCached(index))
-    
+    const uncachedIndices = indices.filter((index) => !isDataCached(index))
+
     if (uncachedIndices.length === 0) return
 
     const minIndex = Math.min(...uncachedIndices)
     const maxIndex = Math.max(...uncachedIndices)
-    
+
     await loadRange(minIndex, maxIndex)
   }
 
   // Update cache size
   const updateCacheSize = (newSize: number) => {
     cacheSize.value = newSize
-    
+
     // Evict items if cache is now too large
     while (cache.value.size > cacheSize.value) {
       evictLeastRecentlyUsed()
@@ -322,7 +321,7 @@ export function useLazyLoading<T>(options: LazyLoadingOptions<T>) {
     // State
     loadingState,
     cacheHitRatio,
-    
+
     // Methods
     getData,
     getMultipleData,
@@ -334,10 +333,10 @@ export function useLazyLoading<T>(options: LazyLoadingOptions<T>) {
     getCacheStats,
     updateCacheSize,
     updatePrefetchCount,
-    
+
     // Cache access
     cache: computed(() => cache.value),
-    metrics: computed(() => metrics.value)
+    metrics: computed(() => metrics.value),
   }
 }
 
@@ -360,7 +359,7 @@ export function useWeekDataLazyLoading(options: {
     loadData: options.loadWeekData,
     prefetchCount: options.prefetchCount,
     cacheSize: options.cacheSize,
-    debug: options.debug
+    debug: options.debug,
   })
 
   // Week-specific methods
@@ -385,6 +384,6 @@ export function useWeekDataLazyLoading(options: {
     getWeekData,
     loadWeeksInRange,
     loadVisibleWeeks,
-    preloadWeeks
+    preloadWeeks,
   }
 }

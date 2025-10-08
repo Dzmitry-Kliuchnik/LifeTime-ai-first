@@ -1,7 +1,6 @@
 // Enhanced API client for LifeTime AI application
 import axios, { type AxiosResponse, type AxiosError } from 'axios'
 import type {
-
   ApiError,
   User,
   UserCreate,
@@ -9,7 +8,6 @@ import type {
   UserProfile,
   PasswordChange,
   UserStats,
-
   NoteCreate,
   NoteUpdate,
   NoteResponse,
@@ -26,7 +24,7 @@ import type {
   LifeProgressResponse,
   TotalWeeksQueryParams,
   CurrentWeekQueryParams,
-  PaginationParams
+  PaginationParams,
 } from '@/types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
@@ -66,9 +64,9 @@ api.interceptors.request.use(
     }
     return config
   },
-  (error) => {
+  (_error) => {
     return Promise.reject(new ApiClientError('Request failed', undefined, 'REQUEST_ERROR'))
-  }
+  },
 )
 
 // Response interceptor with enhanced error handling
@@ -83,15 +81,15 @@ api.interceptors.response.use(
       // Dispatch custom event for auth state change
       window.dispatchEvent(new CustomEvent('auth:logout'))
     }
-    
+
     const apiError = error.response?.data as ApiError
     const status = error.response?.status
     const message = apiError?.message || error.message || 'An error occurred'
     const code = apiError?.error || 'UNKNOWN_ERROR'
     const details = apiError?.details
-    
+
     return Promise.reject(new ApiClientError(message, status, code, details))
-  }
+  },
 )
 
 // Generic API functions
@@ -123,120 +121,127 @@ export async function apiDelete<T>(url: string): Promise<T> {
 // User API
 export const userApi = {
   // Get user by ID
-  getUser: (id: number): Promise<User> => 
-    apiGet<User>(`${API_V1_BASE}/users/${id}`),
-  
+  getUser: (id: number): Promise<User> => apiGet<User>(`${API_V1_BASE}/users/${id}`),
+
   // Create new user
-  createUser: (userData: UserCreate): Promise<User> => 
+  createUser: (userData: UserCreate): Promise<User> =>
     apiPost<User>(`${API_V1_BASE}/users/`, userData),
-  
+
   // Update user
-  updateUser: (id: number, userData: UserUpdate): Promise<User> => 
+  updateUser: (id: number, userData: UserUpdate): Promise<User> =>
     apiPut<User>(`${API_V1_BASE}/users/${id}`, userData),
-  
+
   // Delete user (soft delete)
-  deleteUser: (id: number): Promise<{ message: string }> => 
+  deleteUser: (id: number): Promise<{ message: string }> =>
     apiDelete<{ message: string }>(`${API_V1_BASE}/users/${id}`),
-  
+
   // Get user profile
-  getUserProfile: (id: number): Promise<UserProfile> => 
+  getUserProfile: (id: number): Promise<UserProfile> =>
     apiGet<UserProfile>(`${API_V1_BASE}/users/${id}/profile`),
-  
+
   // Update user profile
-  updateUserProfile: (id: number, profileData: UserProfile): Promise<UserProfile> => 
+  updateUserProfile: (id: number, profileData: UserProfile): Promise<UserProfile> =>
     apiPut<UserProfile>(`${API_V1_BASE}/users/${id}/profile`, profileData),
-  
+
   // Change password
-  changePassword: (id: number, passwordData: PasswordChange): Promise<{ message: string }> => 
+  changePassword: (id: number, passwordData: PasswordChange): Promise<{ message: string }> =>
     apiPost<{ message: string }>(`${API_V1_BASE}/users/${id}/change-password`, passwordData),
-  
+
   // Get user statistics (admin only)
-  getUserStats: (): Promise<UserStats> => 
-    apiGet<UserStats>(`${API_V1_BASE}/users/stats`),
+  getUserStats: (): Promise<UserStats> => apiGet<UserStats>(`${API_V1_BASE}/users/stats`),
 }
 
 // Notes API
 export const notesApi = {
   // Create note
-  createNote: (userId: number, noteData: NoteCreate): Promise<NoteResponse> => 
+  createNote: (userId: number, noteData: NoteCreate): Promise<NoteResponse> =>
     apiPost<NoteResponse>(`${API_V1_BASE}/notes/?user_id=${userId}`, noteData),
-  
+
   // Get note by ID
-  getNote: (noteId: number, userId: number): Promise<NoteResponse> => 
+  getNote: (noteId: number, userId: number): Promise<NoteResponse> =>
     apiGet<NoteResponse>(`${API_V1_BASE}/notes/${noteId}`, { user_id: userId }),
-  
+
   // Update note
-  updateNote: (noteId: number, userId: number, noteData: NoteUpdate): Promise<NoteResponse> => 
+  updateNote: (noteId: number, userId: number, noteData: NoteUpdate): Promise<NoteResponse> =>
     apiPut<NoteResponse>(`${API_V1_BASE}/notes/${noteId}?user_id=${userId}`, noteData),
-  
+
   // Delete note
-  deleteNote: (noteId: number, userId: number): Promise<{ message: string }> => 
+  deleteNote: (noteId: number, userId: number): Promise<{ message: string }> =>
     apiDelete<{ message: string }>(`${API_V1_BASE}/notes/${noteId}?user_id=${userId}`),
-  
+
   // List notes with pagination and filtering
-  listNotes: (userId: number, pagination?: PaginationParams, filters?: NoteSearchRequest): Promise<NoteListResponse> => {
+  listNotes: (
+    userId: number,
+    pagination?: PaginationParams,
+    filters?: NoteSearchRequest,
+  ): Promise<NoteListResponse> => {
     const params = { user_id: userId, ...pagination, ...filters }
     return apiGet<NoteListResponse>(`${API_V1_BASE}/notes/`, params)
   },
-  
+
   // Search notes
-  searchNotes: (userId: number, searchData: NoteSearchRequest): Promise<NoteListResponse> => 
+  searchNotes: (userId: number, searchData: NoteSearchRequest): Promise<NoteListResponse> =>
     apiPost<NoteListResponse>(`${API_V1_BASE}/notes/search?user_id=${userId}`, searchData),
-  
+
   // Get notes for specific week
-  getWeekNotes: (userId: number, weekNumber: number): Promise<WeekNotesResponse> => 
+  getWeekNotes: (userId: number, weekNumber: number): Promise<WeekNotesResponse> =>
     apiGet<WeekNotesResponse>(`${API_V1_BASE}/notes/week/${weekNumber}`, { user_id: userId }),
-  
+
   // Get note statistics
-  getNoteStatistics: (userId: number): Promise<NoteStatistics> => 
+  getNoteStatistics: (userId: number): Promise<NoteStatistics> =>
     apiGet<NoteStatistics>(`${API_V1_BASE}/notes/stats/summary`, { user_id: userId }),
-  
+
   // Get available categories
-  getCategories: (userId: number): Promise<string[]> => 
+  getCategories: (userId: number): Promise<string[]> =>
     apiGet<string[]>(`${API_V1_BASE}/notes/meta/categories`, { user_id: userId }),
-  
+
   // Get available tags
-  getTags: (userId: number): Promise<string[]> => 
+  getTags: (userId: number): Promise<string[]> =>
     apiGet<string[]>(`${API_V1_BASE}/notes/meta/tags`, { user_id: userId }),
 }
 
 // Week Calculation API
 export const weekCalculationApi = {
   // Calculate total weeks in lifespan (POST)
-  calculateTotalWeeks: (requestData: WeekCalculationRequest): Promise<TotalWeeksResponse> => 
+  calculateTotalWeeks: (requestData: WeekCalculationRequest): Promise<TotalWeeksResponse> =>
     apiPost<TotalWeeksResponse>(`${API_V1_BASE}/weeks/total-weeks`, requestData),
-  
+
   // Calculate total weeks in lifespan (GET)
-  getTotalWeeks: (params: TotalWeeksQueryParams): Promise<TotalWeeksResponse> => 
-    apiGet<TotalWeeksResponse>(`${API_V1_BASE}/weeks/total`, params as unknown as Record<string, unknown>),
-  
+  getTotalWeeks: (params: TotalWeeksQueryParams): Promise<TotalWeeksResponse> =>
+    apiGet<TotalWeeksResponse>(
+      `${API_V1_BASE}/weeks/total`,
+      params as unknown as Record<string, unknown>,
+    ),
+
   // Quick total weeks calculation using URL parameters
-  getQuickTotalWeeks: (dob: string, lifespan: number): Promise<TotalWeeksResponse> => 
+  getQuickTotalWeeks: (dob: string, lifespan: number): Promise<TotalWeeksResponse> =>
     apiGet<TotalWeeksResponse>(`${API_V1_BASE}/weeks/total-weeks/${dob}/${lifespan}`),
-  
+
   // Calculate current week index (POST)
-  calculateCurrentWeek: (requestData: CurrentWeekRequest): Promise<CurrentWeekResponse> => 
+  calculateCurrentWeek: (requestData: CurrentWeekRequest): Promise<CurrentWeekResponse> =>
     apiPost<CurrentWeekResponse>(`${API_V1_BASE}/weeks/current-week`, requestData),
-  
+
   // Calculate current week index (GET)
-  getCurrentWeek: (params: CurrentWeekQueryParams): Promise<CurrentWeekResponse> => 
-    apiGet<CurrentWeekResponse>(`${API_V1_BASE}/weeks/current`, params as unknown as Record<string, unknown>),
-  
+  getCurrentWeek: (params: CurrentWeekQueryParams): Promise<CurrentWeekResponse> =>
+    apiGet<CurrentWeekResponse>(
+      `${API_V1_BASE}/weeks/current`,
+      params as unknown as Record<string, unknown>,
+    ),
+
   // Get week summary
-  getWeekSummary: (requestData: WeekSummaryRequest): Promise<WeekSummaryResponse> => 
+  getWeekSummary: (requestData: WeekSummaryRequest): Promise<WeekSummaryResponse> =>
     apiPost<WeekSummaryResponse>(`${API_V1_BASE}/weeks/week-summary`, requestData),
-  
+
   // Calculate life progress
-  calculateLifeProgress: (requestData: WeekCalculationRequest): Promise<LifeProgressResponse> => 
+  calculateLifeProgress: (requestData: WeekCalculationRequest): Promise<LifeProgressResponse> =>
     apiPost<LifeProgressResponse>(`${API_V1_BASE}/weeks/life-progress`, requestData),
 }
 
 // Utility functions for common API operations
 export const apiUtils = {
   // Check if error is ApiClientError
-  isApiError: (error: unknown): error is ApiClientError => 
-    error instanceof ApiClientError,
-  
+  isApiError: (error: unknown): error is ApiClientError => error instanceof ApiClientError,
+
   // Extract error message from various error types
   getErrorMessage: (error: unknown): string => {
     if (error instanceof ApiClientError) {
@@ -247,22 +252,24 @@ export const apiUtils = {
     }
     return String(error)
   },
-  
+
   // Check if error is a specific status code
   isErrorStatus: (error: unknown, status: number): boolean => {
     return error instanceof ApiClientError && error.status === status
   },
-  
+
   // Check if error is validation error
   isValidationError: (error: unknown): boolean => {
-    return error instanceof ApiClientError && (error.status === 422 || error.code === 'VALIDATION_ERROR')
+    return (
+      error instanceof ApiClientError && (error.status === 422 || error.code === 'VALIDATION_ERROR')
+    )
   },
-  
+
   // Check if error is authorization error
   isAuthError: (error: unknown): boolean => {
     return error instanceof ApiClientError && (error.status === 401 || error.status === 403)
   },
-  
+
   // Check if error is not found error
   isNotFoundError: (error: unknown): boolean => {
     return error instanceof ApiClientError && error.status === 404

@@ -18,5 +18,5 @@ export type {
   TotalWeeksResponse,
   CurrentWeekResponse,
   LifeProgressResponse,
-  LoadingState
+  LoadingState,
 } from '@/types'
