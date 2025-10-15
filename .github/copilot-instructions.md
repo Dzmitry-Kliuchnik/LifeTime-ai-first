@@ -37,6 +37,7 @@ Follow consistent structure across projects (backend, frontend, full-stack):
 - Keep entry point files (`app.py`, `main.py`, `server.js`, `index.js`) minimal — delegate core application setup and logic to imported modules.
 - Use environment variables exclusively for configuration and secrets (via `dotenv` or similar mechanisms). See Security section.
 - Use and maintain dependency lock files (`requirements.txt` with pinned versions via `pip-compile` or `poetry.lock`, `pnpm-lock.yaml`).
+- All python tests should be added only to `tests/` folder.
 
 ### Frontend (React / JS / TS)
 
@@ -170,6 +171,7 @@ To ensure consistency, efficiency, and safety in terminal operations, adhere to 
 - **Alias Usage:** Do not rely on shell aliases being present in the user's environment. Generate the full commands required. Suggest creating aliases only if explicitly asked or as a separate optional tip.
 - **Environment Consistency:** Assume environment variables are loaded via `.env` files as per project standards. Do not suggest exporting secrets directly in the terminal.
 - **Scripting:** When generating shell scripts (`.sh`), include comments (`#`) to explain complex commands or logical sections. Use `set -e` to ensure scripts exit on error. Validate inputs where appropriate.
+- Always run all terminal commands in the new terminal + concatenate change directory commands with the others
 
 ---
 

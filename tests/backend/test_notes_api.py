@@ -34,7 +34,6 @@ class TestNotesAPI:
         return {
             "title": "Test Note",
             "content": "This is a test note content with enough words to test word count calculation functionality.",
-            "category": "testing",
             "tags": "test,api,sample",
             "is_favorite": False,
             "is_archived": False,
@@ -55,9 +54,10 @@ class TestNotesAPI:
 
         assert data["title"] == sample_note_data["title"]
         assert data["content"] == sample_note_data["content"]
-        assert data["category"] == sample_note_data["category"]
-        # Tags may be sorted, so check as sets
-        assert set(data["tags"].split(",")) == set(sample_note_data["tags"].split(","))
+        # Tags are returned as a list from the API, so compare as sets
+        expected_tags = set(sample_note_data["tags"].split(","))
+        actual_tags = set(data["tags"]) if data["tags"] else set()
+        assert actual_tags == expected_tags
         assert data["owner_id"] == test_user.id
         assert "id" in data
         assert "created_at" in data
@@ -370,12 +370,10 @@ class TestNotesAPI:
         note1_data = sample_note_data.copy()
         note1_data["title"] = "Python Tutorial"
         note1_data["content"] = "Learn Python programming"
-        note1_data["category"] = "programming"
 
         note2_data = sample_note_data.copy()
         note2_data["title"] = "JavaScript Guide"
         note2_data["content"] = "Learn JavaScript development"
-        note2_data["category"] = "programming"
 
         client.post("/api/v1/notes/", json=note1_data, params={"user_id": test_user.id})
         client.post("/api/v1/notes/", json=note2_data, params={"user_id": test_user.id})
@@ -437,31 +435,7 @@ class TestNotesAPI:
         data = response.json()
         assert data["total_notes"] == 3
         assert data["favorite_notes"] == 1
-        assert "categories" in data
         assert "notes_by_week" in data
-
-    def test_get_categories_endpoint(
-        self, client: TestClient, test_user: User, sample_note_data: Dict[str, Any]
-    ):
-        """Test getting unique categories."""
-        # Create notes with different categories
-        categories = ["work", "personal", "study"]
-        for category in categories:
-            note_data = sample_note_data.copy()
-            note_data["category"] = category
-            client.post(
-                "/api/v1/notes/", json=note_data, params={"user_id": test_user.id}
-            )
-
-        # Get categories
-        response = client.get(
-            "/api/v1/notes/meta/categories", params={"user_id": test_user.id}
-        )
-
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data) == 3
-        assert all(cat in data for cat in categories)
 
     def test_get_tags_endpoint(
         self, client: TestClient, test_user: User, sample_note_data: Dict[str, Any]
@@ -548,7 +522,6 @@ class TestNotesAPI:
         note_data = {
             "title": "Large Content Note",
             "content": large_content,
-            "category": "test",
             "week_number": 1800,
         }
 

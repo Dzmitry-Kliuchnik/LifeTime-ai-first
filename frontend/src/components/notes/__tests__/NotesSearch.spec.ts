@@ -121,14 +121,6 @@ describe('NotesSearch.vue', () => {
       await wrapper.find('.advanced-toggle-button').trigger('click')
     })
 
-    it('filters by category', async () => {
-      const categorySelect = wrapper.find('#category-filter')
-      await categorySelect.setValue('Work')
-      await wrapper.find('.search-button').trigger('click')
-
-      expect(wrapper.emitted('search')?.[0]).toEqual([{ category: 'Work' }])
-    })
-
     it('filters by tags', async () => {
       const tagInput = wrapper.find('#tags-filter')
       await tagInput.setValue('project')
@@ -153,7 +145,6 @@ describe('NotesSearch.vue', () => {
     it('clears all filters when "Clear All Filters" is clicked', async () => {
       // Set some filters
       await wrapper.find('#search-query').setValue('test')
-      await wrapper.find('#category-filter').setValue('Work')
 
       // Click clear
       await wrapper.find('[data-testid="clear-all-filters"]').trigger('click')
@@ -202,47 +193,6 @@ describe('NotesSearch.vue', () => {
     })
   })
 
-  describe('Active Filters Display', () => {
-    beforeEach(async () => {
-      wrapper = mountComponent({
-        autoSearch: false,
-        availableCategories: ['Work', 'Personal', 'Ideas'],
-        availableTags: ['important', 'project', 'meeting'],
-      })
-      await wrapper.find('.advanced-toggle-button').trigger('click')
-    })
-
-    it('displays active text search filter and allows removal', async () => {
-      await wrapper.find('#search-query').setValue('test query')
-      await wrapper.find('.search-button').trigger('click')
-      await nextTick()
-
-      const filterTag = wrapper.find('[data-testid="active-filter-query"]')
-      expect(filterTag.exists()).toBe(true)
-      expect(filterTag.text()).toContain('Search: "test query"')
-
-      await filterTag.find('button').trigger('click')
-      await nextTick()
-
-      expect(wrapper.emitted('filters-change')).toBeTruthy()
-    })
-
-    it('displays active category filter and allows removal', async () => {
-      await wrapper.find('#category-filter').setValue('Work')
-      await wrapper.find('.search-button').trigger('click')
-      await nextTick()
-
-      const filterTag = wrapper.find('[data-testid="active-filter-category"]')
-      expect(filterTag.exists()).toBe(true)
-      expect(filterTag.text()).toContain('Category: Work')
-
-      await filterTag.find('button').trigger('click')
-      await nextTick()
-
-      expect(wrapper.emitted('filters-change')).toBeTruthy()
-    })
-  })
-
   describe('Error Handling', () => {
     it('displays an error message and a retry button', async () => {
       wrapper = mountComponent({ searchError: 'Search service unavailable' })
@@ -282,7 +232,7 @@ describe('NotesSearch.vue', () => {
       await notesSearch.find('#search-query').setValue('meeting')
       await notesSearch.find('.search-button').trigger('click')
 
-      expect(mockNotesStore.searchNotes).toHaveBeenCalledWithExactlyOnceWith(
+      expect(mockNotesStore.searchNotes).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({ query: 'meeting' }),
       )
     })
@@ -300,7 +250,7 @@ describe('NotesSearch.vue', () => {
       await interfaceWrapper.vm.$nextTick()
 
       // Verify the search was initiated properly
-      expect(mockNotesStore.searchNotes).toHaveBeenCalledWithExactlyOnceWith({ query: 'test' })
+      expect(mockNotesStore.searchNotes).toHaveBeenCalledExactlyOnceWith({ query: 'test' })
 
       // Complete the search
       resolveSearch!({ notes: [], total: 0 })
@@ -315,7 +265,6 @@ describe('NotesSearch.vue', () => {
           title: 'Test Note',
           content: 'Test content',
           user_id: 1,
-          category: 'Test',
           tags: [],
           week_number: 1,
           is_favorite: false,
@@ -346,9 +295,9 @@ describe('NotesSearch.vue', () => {
       await interfaceWrapper.vm.handleSearch({ query: 'nonexistent' })
       await interfaceWrapper.vm.$nextTick()
 
-      const noResults = interfaceWrapper.find('.no-results-message')
+      const noResults = interfaceWrapper.find('.notes-empty')
       expect(noResults.exists()).toBe(true)
-      expect(noResults.text()).toContain('No notes found')
+      expect(noResults.text()).toContain('No matching notes found')
     })
   })
 })

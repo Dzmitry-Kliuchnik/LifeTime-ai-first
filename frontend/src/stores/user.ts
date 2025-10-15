@@ -23,7 +23,7 @@ export const useUserStore = defineStore('user', () => {
 
   // Getters
   const hasDateOfBirth = computed(
-    () => currentUser.value?.date_of_birth != null && currentUser.value.date_of_birth !== '',
+    () => currentUser.value?.date_of_birth != null && currentUser.value.date_of_birth.trim() !== '',
   )
 
   const userLifespan = computed(() => currentUser.value?.lifespan || 80)
@@ -39,9 +39,10 @@ export const useUserStore = defineStore('user', () => {
   const isProfileComplete = computed(() => {
     if (!currentUser.value) return false
     return !!(
-      currentUser.value.full_name &&
-      currentUser.value.date_of_birth &&
-      currentUser.value.lifespan
+      currentUser.value.full_name?.trim() &&
+      currentUser.value.date_of_birth?.trim() &&
+      currentUser.value.lifespan &&
+      currentUser.value.lifespan > 0
     )
   })
 
@@ -94,8 +95,28 @@ export const useUserStore = defineStore('user', () => {
 
       if (storedUser && storedAuth === 'true') {
         const user = JSON.parse(storedUser) as User
+
+        // Validate that user has meaningful data, not just empty strings
+        const hasValidData = !!(
+          user.full_name?.trim() &&
+          user.date_of_birth?.trim() &&
+          user.lifespan &&
+          user.lifespan > 0
+        )
+
         currentUser.value = user
         isAuthenticated.value = true
+
+        // If user data is incomplete, clear it to prevent API calls with invalid data
+        if (!hasValidData) {
+          console.warn('Loaded user has incomplete profile data, clearing localStorage')
+          localStorage.removeItem('user')
+          localStorage.removeItem('isAuthenticated')
+          currentUser.value = null
+          isAuthenticated.value = false
+          return null
+        }
+
         return user
       }
     } catch (error) {

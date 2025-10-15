@@ -773,8 +773,20 @@ function handleRetry() {
 
 // Data loading
 async function loadGridData() {
+  if (!userStore.isProfileComplete) {
+    error.value = 'Complete user profile is required to display the life grid'
+    return
+  }
+
   if (!userStore.hasDateOfBirth) {
     error.value = 'Date of birth is required to display the life grid'
+    return
+  }
+
+  // Additional validation for the specific data we're about to send
+  const currentUser = userStore.currentUser
+  if (!currentUser?.date_of_birth?.trim() || !currentUser.lifespan || currentUser.lifespan <= 0) {
+    error.value = 'Valid user data is required to display the life grid'
     return
   }
 
@@ -783,7 +795,7 @@ async function loadGridData() {
 
   try {
     await weekCalculationStore.calculateLifeProgress({
-      date_of_birth: userStore.currentUser!.date_of_birth!,
+      date_of_birth: currentUser.date_of_birth,
       lifespan_years: userStore.userLifespan,
       timezone: userStore.userTimezone,
     })
@@ -797,9 +809,23 @@ async function loadGridData() {
 // Resize observer for responsive cell sizing
 let resizeObserver: ResizeObserver | null = null
 
+// Watch for user profile completion to trigger data loading
+watch(
+  () => userStore.isProfileComplete,
+  (isComplete) => {
+    if (isComplete) {
+      loadGridData()
+    }
+  },
+  { immediate: true },
+)
+
 // Lifecycle
 onMounted(() => {
-  loadGridData()
+  // Only load data if profile is already complete
+  if (userStore.isProfileComplete) {
+    loadGridData()
+  }
 
   // Set initial selection to current week
   if (currentWeekIndex.value !== null) {

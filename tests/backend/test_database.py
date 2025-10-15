@@ -195,7 +195,6 @@ class TestDatabaseModels:
             title="Test Note",
             content="This is test content for the note.",
             owner_id=user.id,
-            category="test",
             is_favorite=False,
             is_archived=False,
             is_deleted=False,

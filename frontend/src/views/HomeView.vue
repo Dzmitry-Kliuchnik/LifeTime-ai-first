@@ -28,7 +28,11 @@
             />
           </div>
 
-          <button type="submit" class="btn-primary" :disabled="isLoading || !setupData.fullName.trim()">
+          <button
+            type="submit"
+            class="btn-primary"
+            :disabled="isLoading || !setupData.fullName.trim()"
+          >
             {{ isLoading ? 'Checking...' : 'Continue' }}
           </button>
         </form>
@@ -100,8 +104,6 @@
       </div>
     </div>
 
-
-
     <!-- Notes Modal -->
     <NotesModal
       :isOpen="isNotesModalOpen"
@@ -117,6 +119,7 @@
       "
       variant="modal"
       size="large"
+      :closeOnOverlay="false"
     >
       <template #headerActions>
         <NotesInterface
@@ -196,7 +199,11 @@ const hoveredWeekInfo = ref<{
 // Computed properties
 const isUserSetup = computed(() => {
   // Always show setup form on page load unless user has been confirmed in this session
-  return hasConfirmedUser.value && userStore.currentUser?.date_of_birth && userStore.currentUser?.lifespan
+  return (
+    hasConfirmedUser.value &&
+    userStore.currentUser?.date_of_birth &&
+    userStore.currentUser?.lifespan
+  )
 })
 
 const lifeProgress = computed(() => weekCalculationStore.lifeProgress)
@@ -223,7 +230,7 @@ async function handleNameSubmit() {
   try {
     // Check if user exists by name
     const existingUser = await userStore.getUserByName(setupData.value.fullName.trim())
-    
+
     if (existingUser) {
       // User exists - show confirmation modal with prepopulated data
       existingUserData.value = {
@@ -240,7 +247,7 @@ async function handleNameSubmit() {
       confirmationModalMessage.value = `Hi ${setupData.value.fullName}! Please provide your birth date and expected lifespan to create your life grid:`
       confirmationButtonText.value = 'Create Life Grid'
     }
-    
+
     isConfirmationModalOpen.value = true
   } catch (error) {
     console.error('Error checking user:', error)
@@ -262,12 +269,33 @@ function handleConfirmationModalClose() {
 
 async function handleUserDataConfirmation(userData: { dateOfBirth: string; lifespan: number }) {
   isLoading.value = true
-  
+
   try {
+    // Validate and format the date
+    if (!userData.dateOfBirth || !userData.dateOfBirth.trim()) {
+      console.error('Invalid date of birth:', userData.dateOfBirth)
+      return
+    }
+
+    // Validate lifespan
+    if (!userData.lifespan || userData.lifespan <= 0 || userData.lifespan > 150) {
+      console.error('Invalid lifespan:', userData.lifespan)
+      return
+    }
+
+    // Ensure date is in YYYY-MM-DD format
+    const dateObj = new Date(userData.dateOfBirth)
+    if (isNaN(dateObj.getTime())) {
+      console.error('Invalid date format:', userData.dateOfBirth)
+      return
+    }
+
+    const formattedDate = dateObj.toISOString().split('T')[0]!
+
     // Create or update user using the findOrCreateUserByName API
     const user = await userStore.findOrCreateUserByName({
       full_name: setupData.value.fullName.trim(),
-      date_of_birth: userData.dateOfBirth,
+      date_of_birth: formattedDate,
       lifespan: userData.lifespan,
       theme: 'light',
       font_size: 14,
@@ -278,7 +306,7 @@ async function handleUserDataConfirmation(userData: { dateOfBirth: string; lifes
       return
     }
 
-    await setupUserData(user, userData)
+    await setupUserData(user, { dateOfBirth: formattedDate, lifespan: userData.lifespan })
     hasConfirmedUser.value = true // Mark user as confirmed in this session
     isConfirmationModalOpen.value = false
     existingUserData.value = null
@@ -306,8 +334,7 @@ async function setupUserData(user: any, userData: { dateOfBirth: string; lifespa
       (1000 * 60 * 60 * 24 * 30.44),
   )
   const ageDays = Math.floor(
-    ((now.getTime() - birthDate.getTime()) % (1000 * 60 * 60 * 24 * 30.44)) /
-      (1000 * 60 * 60 * 24),
+    ((now.getTime() - birthDate.getTime()) % (1000 * 60 * 60 * 24 * 30.44)) / (1000 * 60 * 60 * 24),
   )
 
   // Set store values using user data
@@ -342,8 +369,6 @@ async function setupUserData(user: any, userData: { dateOfBirth: string; lifespa
     current_date: now.toISOString().split('T')[0]!,
   }
 }
-
-
 
 function handleWeekClick(weekIndex: number, weekData: any) {
   // Add to highlights if not already there
@@ -413,7 +438,7 @@ function resetUser() {
   hoveredWeekInfo.value = null
   isNotesModalOpen.value = false
   selectedWeekForNotes.value = null
-  
+
   // Reset confirmation modal state
   isConfirmationModalOpen.value = false
   existingUserData.value = null
@@ -423,9 +448,17 @@ function resetUser() {
 onMounted(async () => {
   // Load user from storage if available
   const user = userStore.loadUserFromStorage()
-  
-  // If user exists and has required data, initialize week calculations
-  if (user && user.date_of_birth && user.lifespan) {
+
+  // If user exists and has complete profile, initialize week calculations
+  // Double check that the profile is truly complete with meaningful data
+  if (
+    user &&
+    userStore.isProfileComplete &&
+    user.full_name?.trim() &&
+    user.date_of_birth?.trim() &&
+    user.lifespan &&
+    user.lifespan > 0
+  ) {
     try {
       await weekCalculationStore.initializeForUser()
     } catch (error) {

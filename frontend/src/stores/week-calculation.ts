@@ -72,7 +72,7 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
     const userStore = useUserStore()
     const user = userStore.currentUser
 
-    if (!user?.date_of_birth) {
+    if (!user?.date_of_birth?.trim()) {
       return null
     }
 
@@ -126,12 +126,16 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
     request?: CurrentWeekRequest,
   ): Promise<CurrentWeekResponse | null> => {
     const userStore = useUserStore()
-    const requestData = request || {
-      date_of_birth: userStore.currentUser?.date_of_birth || '',
-      timezone: userStore.userTimezone,
-    }
+    const requestData =
+      request ||
+      (userStore.currentUser?.date_of_birth?.trim()
+        ? {
+            date_of_birth: userStore.currentUser.date_of_birth,
+            timezone: userStore.userTimezone,
+          }
+        : null)
 
-    if (!requestData.date_of_birth) {
+    if (!requestData?.date_of_birth?.trim()) {
       setError('User date of birth is required')
       return null
     }
@@ -216,6 +220,17 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
     const requestData = request || getDefaultCalculationRequest()
     if (!requestData) {
       setError('User date of birth is required')
+      return null
+    }
+
+    // Additional validation for request data
+    if (!requestData.date_of_birth?.trim()) {
+      setError('Valid date of birth is required')
+      return null
+    }
+
+    if (!requestData.lifespan_years || requestData.lifespan_years <= 0) {
+      setError('Valid lifespan is required')
       return null
     }
 
@@ -323,7 +338,7 @@ export const useWeekCalculationStore = defineStore('weekCalculation', () => {
   // Initialize calculations for current user
   const initializeForUser = async (): Promise<void> => {
     const userStore = useUserStore()
-    if (!userStore.currentUser?.date_of_birth) {
+    if (!userStore.isProfileComplete) {
       return
     }
 

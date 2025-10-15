@@ -53,7 +53,6 @@ class TestNoteModel:
             title="Test Note",
             content="This is test content for the note.",
             owner_id=test_user.id,
-            category="test",
             week_number=10,
             note_date=date(2024, 3, 15),
             edit_history=[
@@ -227,14 +226,12 @@ class TestNoteRepository:
             content="Important content",
             owner_id=test_user.id,
             week_number=5,
-            category="work",
         )
         note2 = Note(
             title="Personal Note",
             content="Personal content",
             owner_id=test_user.id,
             week_number=10,
-            category="personal",
         )
 
         test_session.add_all([note1, note2])
@@ -395,6 +392,7 @@ class TestNoteService:
         note_data = NoteCreate(
             title="Original Title",
             content="Original content.",
+            week_number=100,
         )
         note_response = note_service.create_note(test_user.id, note_data)
 
@@ -455,14 +453,12 @@ class TestNoteService:
         note1_data = NoteCreate(
             title="Work Meeting Notes",
             content="Important meeting discussion",
-            category="work",
             tags="meeting,important",
             week_number=100,
         )
         note2_data = NoteCreate(
             title="Personal Thoughts",
             content="Random personal thoughts",
-            category="personal",
             tags="thoughts,personal",
             week_number=105,
         )
@@ -476,8 +472,8 @@ class TestNoteService:
         assert results.total == 1
         assert results.notes[0].title == "Work Meeting Notes"
 
-        # Search by category
-        search_request = NoteSearchRequest(category="personal")
+        # Search by tags
+        search_request = NoteSearchRequest(tags=["personal"])
         results = note_service.search_notes(test_user.id, search_request)
         assert results.total == 1
         assert results.notes[0].title == "Personal Thoughts"
@@ -500,6 +496,7 @@ class TestNoteService:
         note_data = NoteCreate(
             title="To be deleted",
             content="This will be deleted",
+            week_number=150,
         )
         note_response = note_service.create_note(test_user.id, note_data)
 
@@ -532,7 +529,6 @@ class TestNoteAPI:
         note_data = {
             "title": "API Test Note",
             "content": "Content from API test",
-            "category": "test",
             "week_number": 100,
         }
 
@@ -588,17 +584,19 @@ class TestNoteAPI:
         note1_data = {
             "title": "Searchable Note",
             "content": "This is searchable",
-            "category": "test",
+            "tags": "test",
+            "week_number": 200,
         }
         note2_data = {
             "title": "Other Note",
             "content": "Different content",
-            "category": "other",
+            "tags": "other",
+            "week_number": 201,
         }
         client.post(f"/api/v1/notes/?user_id={test_user.id}", json=note1_data)
         client.post(f"/api/v1/notes/?user_id={test_user.id}", json=note2_data)
 
-        search_data = {"query": "searchable", "category": "test"}
+        search_data = {"query": "searchable", "tags": ["test"]}
 
         response = client.post(
             f"/api/v1/notes/search?user_id={test_user.id}", json=search_data
@@ -616,7 +614,7 @@ class TestNoteAPI:
             note_data = {
                 "title": f"Stats Note {i}",
                 "content": f"Content {i}",
-                "category": "test" if i % 2 == 0 else "other",
+                "tags": "test" if i % 2 == 0 else "other",
                 "week_number": i,
             }
             client.post(f"/api/v1/notes/?user_id={test_user.id}", json=note_data)
@@ -626,5 +624,4 @@ class TestNoteAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["total_notes"] == 5
-        assert "categories" in data
         assert "notes_by_week" in data

@@ -14,7 +14,6 @@ export interface PaginatedRequest {
 
 export interface SearchFilters {
   q?: string
-  category?: string
   tags?: string[]
   date_from?: string
   date_to?: string

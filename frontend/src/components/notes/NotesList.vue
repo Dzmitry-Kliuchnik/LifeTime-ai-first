@@ -9,64 +9,10 @@
         <p v-if="description" class="notes-list-description">
           {{ description }}
         </p>
-        <div class="notes-count">
-          <span class="count-text">
-            {{ totalNotes }} {{ totalNotes === 1 ? 'note' : 'notes' }}
-          </span>
-          <span v-if="hasFilters" class="filtered-count">
-            ({{ displayedNotes.length }} displayed)
-          </span>
-        </div>
       </div>
 
       <div class="notes-list-controls">
         <!-- View Toggle -->
-        <div v-if="showViewToggle" class="view-toggle">
-          <button
-            type="button"
-            class="view-toggle-button"
-            :class="{ active: viewMode === 'list' }"
-            @click="setViewMode('list')"
-            aria-label="List view"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <line x1="8" y1="6" x2="21" y2="6"></line>
-              <line x1="8" y1="12" x2="21" y2="12"></line>
-              <line x1="8" y1="18" x2="21" y2="18"></line>
-              <line x1="3" y1="6" x2="3.01" y2="6"></line>
-              <line x1="3" y1="12" x2="3.01" y2="12"></line>
-              <line x1="3" y1="18" x2="3.01" y2="18"></line>
-            </svg>
-          </button>
-          <button
-            type="button"
-            class="view-toggle-button"
-            :class="{ active: viewMode === 'grid' }"
-            @click="setViewMode('grid')"
-            aria-label="Grid view"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <rect x="3" y="3" width="7" height="7"></rect>
-              <rect x="14" y="3" width="7" height="7"></rect>
-              <rect x="14" y="14" width="7" height="7"></rect>
-              <rect x="3" y="14" width="7" height="7"></rect>
-            </svg>
-          </button>
-        </div>
 
         <!-- Sort Controls -->
         <div v-if="showSortControls" class="sort-controls">
@@ -76,9 +22,9 @@
             @change="handleSortChange"
             aria-label="Sort by"
           >
+            <option value="title">Title</option>
             <option value="updated_at">Last Updated</option>
             <option value="created_at">Date Created</option>
-            <option value="title">Title</option>
             <option value="word_count">Word Count</option>
             <option value="reading_time">Reading Time</option>
           </select>
@@ -189,13 +135,13 @@
     </div>
 
     <!-- Pagination -->
-    <div v-if="showPagination" class="pagination-section">
+    <div v-if="shouldShowPagination" class="pagination-section">
       <nav class="pagination" role="navigation" aria-label="Notes pagination">
         <button
           type="button"
           class="pagination-button"
-          :disabled="currentPage <= 1"
-          @click="goToPage(currentPage - 1)"
+          :disabled="internalCurrentPage <= 1"
+          @click="goToInternalPage(internalCurrentPage - 1)"
           aria-label="Previous page"
         >
           <svg
@@ -211,14 +157,16 @@
         </button>
 
         <div class="pagination-info">
-          <span class="pagination-text"> Page {{ currentPage }} of {{ totalPages }} </span>
+          <span class="pagination-text">
+            Page {{ internalCurrentPage }} of {{ totalPagesComputed }}
+          </span>
         </div>
 
         <button
           type="button"
           class="pagination-button"
-          :disabled="currentPage >= totalPages"
-          @click="goToPage(currentPage + 1)"
+          :disabled="internalCurrentPage >= totalPagesComputed"
+          @click="goToInternalPage(internalCurrentPage + 1)"
           aria-label="Next page"
         >
           <svg
@@ -334,13 +282,17 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
+// Constants
+const NOTES_PER_PAGE = 5
+
 // Component state
 const viewMode = ref<'list' | 'grid'>(props.defaultViewMode)
 const currentSortField = ref(props.defaultSortField)
 const currentSortDirection = ref<'asc' | 'desc'>(props.defaultSortDirection)
+const internalCurrentPage = ref(1)
 
 // Computed properties
-const displayedNotes = computed(() => {
+const sortedNotes = computed(() => {
   if (!props.notes) return []
 
   // Create a copy to avoid mutating the original array
@@ -372,6 +324,29 @@ const displayedNotes = computed(() => {
   })
 
   return sortedNotes
+})
+
+const totalPagesComputed = computed(() => {
+  return Math.ceil(sortedNotes.value.length / NOTES_PER_PAGE)
+})
+
+const shouldShowPagination = computed(() => {
+  return sortedNotes.value.length > NOTES_PER_PAGE
+})
+
+const displayedNotes = computed(() => {
+  if (!sortedNotes.value.length) return []
+
+  // If we don't need pagination, return all notes
+  if (!shouldShowPagination.value) {
+    return sortedNotes.value
+  }
+
+  // Calculate pagination
+  const startIndex = (internalCurrentPage.value - 1) * NOTES_PER_PAGE
+  const endIndex = startIndex + NOTES_PER_PAGE
+
+  return sortedNotes.value.slice(startIndex, endIndex)
 })
 
 // Methods
@@ -436,6 +411,12 @@ const goToPage = (page: number) => {
   }
 }
 
+const goToInternalPage = (page: number) => {
+  if (page >= 1 && page <= totalPagesComputed.value) {
+    internalCurrentPage.value = page
+  }
+}
+
 const handleRetry = () => {
   emit('retry')
 }
@@ -461,6 +442,11 @@ watch(
     currentSortDirection.value = newDirection
   },
 )
+
+// Reset internal pagination when notes change or sort changes
+watch([() => props.notes, currentSortField, currentSortDirection], () => {
+  internalCurrentPage.value = 1
+})
 </script>
 
 <style scoped>
@@ -473,7 +459,7 @@ watch(
   --notes-list-text-muted: #a0aec0;
   --notes-list-primary: #3182ce;
   --notes-list-hover: #f7fafc;
-  --notes-list-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --notes-list-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   --notes-list-border-radius: 0.5rem;
   --notes-list-transition: all 0.2s ease;
 }
@@ -495,7 +481,6 @@ watch(
 .notes-list {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
   width: 100%;
 }
 
@@ -549,37 +534,6 @@ watch(
   flex-shrink: 0;
 }
 
-.view-toggle {
-  display: flex;
-  background-color: var(--notes-list-hover);
-  border-radius: 0.375rem;
-  padding: 0.25rem;
-}
-
-.view-toggle-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border: none;
-  background: none;
-  border-radius: 0.25rem;
-  color: var(--notes-list-text-muted);
-  cursor: pointer;
-  transition: var(--notes-list-transition);
-}
-
-.view-toggle-button:hover {
-  color: var(--notes-list-text-secondary);
-}
-
-.view-toggle-button.active {
-  background-color: var(--notes-list-bg);
-  color: var(--notes-list-primary);
-  box-shadow: var(--notes-list-shadow);
-}
-
 .sort-controls {
   display: flex;
   align-items: center;
@@ -587,9 +541,8 @@ watch(
 }
 
 .sort-select {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--notes-list-border);
-  border-radius: 0.375rem;
+  padding: 0.5rem 0.5rem;
+  border-radius: 0.5rem;
   background-color: var(--notes-list-bg);
   color: var(--notes-list-text-primary);
   font-size: 0.875rem;
@@ -712,7 +665,7 @@ watch(
 /* Transitions */
 .note-item-enter-active,
 .note-item-leave-active {
-  transition: all 0.3s ease;
+  transition: var(--notes-list-transition);
 }
 
 .note-item-enter-from {
@@ -822,7 +775,6 @@ watch(
   justify-content: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  border: none;
   border-radius: 0.375rem;
   font-size: 0.875rem;
   font-weight: 500;
@@ -839,7 +791,6 @@ watch(
 
 .btn-primary {
   background-color: var(--notes-list-primary);
-  color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -880,10 +831,6 @@ watch(
   .sort-controls {
     order: -1;
   }
-
-  .view-toggle {
-    order: 1;
-  }
 }
 
 @media (max-width: 480px) {
@@ -910,21 +857,9 @@ watch(
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .note-item-enter-active,
-  .note-item-leave-active,
-  .view-toggle-button,
-  .sort-direction-button,
-  .pagination-button,
-  .btn {
-    transition: none;
-  }
-
-  .loading-spinner {
-    animation: none;
-  }
-
-  .rotate-180 {
-    transform: none;
+  * {
+    transition: none !important;
+    animation: none !important;
   }
 }
 </style>

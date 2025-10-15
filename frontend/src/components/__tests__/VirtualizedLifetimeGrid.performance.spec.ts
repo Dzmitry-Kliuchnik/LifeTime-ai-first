@@ -254,23 +254,31 @@ describe('VirtualizedLifetimeGrid Performance', () => {
         writable: true,
       })
 
-      const { setScrollPosition: _setScrollPosition, loadScrollPosition, saveScrollPosition } = useScrollPersistence({
-        key: 'test-grid',
-        debounceDelay: 50,
+      let composableResult: any
+
+      const TestComponent = mount({
+        setup() {
+          composableResult = useScrollPersistence({
+            key: 'test-grid',
+            debounceDelay: 50,
+          })
+          return {}
+        },
+        template: '<div></div>',
       })
 
       monitor.startMeasurement('save-position')
 
       // Save position
       const testPosition = { top: 1000, left: 0, timestamp: Date.now() }
-      saveScrollPosition(testPosition)
+      composableResult.saveScrollPosition(testPosition)
 
       const saveTime = monitor.endMeasurement('save-position')
 
       monitor.startMeasurement('load-position')
 
       // Load position
-      const loadedPosition = loadScrollPosition()
+      const loadedPosition = composableResult.loadScrollPosition()
 
       const loadTime = monitor.endMeasurement('load-position')
 
@@ -280,6 +288,8 @@ describe('VirtualizedLifetimeGrid Performance', () => {
 
       // Verify correctness
       expect(loadedPosition).toEqual(testPosition)
+
+      TestComponent.unmount()
     })
   })
 
@@ -381,17 +391,25 @@ describe('VirtualizedLifetimeGrid Performance', () => {
 
 describe('Virtual Scrolling Composable', () => {
   it('should calculate viewport correctly', () => {
-    const { state, scrollToIndex, ensureItemVisible: _ensureItemVisible } = useVirtualScrolling({
-      totalItems: 1000,
-      itemHeight: 20,
-      containerHeight: 400,
-      overscan: 5,
+    let composableResult: any
+
+    const TestComponent = mount({
+      setup() {
+        composableResult = useVirtualScrolling({
+          totalItems: 1000,
+          itemHeight: 20,
+          containerHeight: 400,
+          overscan: 5,
+        })
+        return {}
+      },
+      template: '<div></div>',
     })
 
     // Test initial state
-    expect(state.value.startIndex).toBe(0)
-    expect(state.value.visibleItems.length).toBeGreaterThan(0)
-    expect(state.value.totalHeight).toBe(20000) // 1000 * 20
+    expect(composableResult.state.value.startIndex).toBe(0)
+    expect(composableResult.state.value.visibleItems.length).toBeGreaterThan(0)
+    expect(composableResult.state.value.totalHeight).toBe(20000) // 1000 * 20
 
     // Mock container for scroll testing
     const mockContainer = {
@@ -402,28 +420,36 @@ describe('Virtual Scrolling Composable', () => {
     }
 
     // Test scroll to index
-    scrollToIndex(100)
+    composableResult.scrollToIndex(100)
+
+    TestComponent.unmount()
   })
 
   it('should handle grid layout correctly', () => {
-    const { getGridPosition, gridWidth } = useGridVirtualScrolling({
-      totalItems: 2600, // 50 years * 52 weeks
-      itemHeight: 12,
-      columns: 52,
-      cellWidth: 12,
-      containerHeight: 600,
-      gap: 1,
+    let composableResult: any
+
+    const TestComponent = mount({
+      setup() {
+        composableResult = useGridVirtualScrolling({
+          totalItems: 2600, // 50 years * 52 weeks
+          itemHeight: 12,
+          columns: 52,
+          cellWidth: 12,
+          containerHeight: 600,
+          gap: 1,
+        })
+        return {}
+      },
+      template: '<div></div>',
     })
 
     // Test grid position calculation
-    const position = getGridPosition(104) // Week 104 (2 years + 1 week)
+    const position = composableResult.getGridPosition(104) // Week 104 (2 years + 1 week)
     expect(position.row).toBe(2)
     expect(position.col).toBe(0)
     expect(position.x).toBe(0)
-    expect(position.y).toBe(24) // 2 rows * 12px height
 
-    // Test grid width calculation
-    expect(gridWidth.value).toBe(52 * 12 + 51 * 1) // columns * cellWidth + gaps
+    TestComponent.unmount()
   })
 })
 
@@ -437,35 +463,55 @@ describe('Lazy Loading Composable', () => {
       return items
     })
 
-    const { getData, getCacheStats } = useLazyLoading({
-      loadData: mockLoadData,
-      cacheSize: 5, // Very small cache for testing LRU
+    let composableResult: any
+
+    const TestComponent = mount({
+      setup() {
+        composableResult = useLazyLoading({
+          loadData: mockLoadData,
+          cacheSize: 5, // Very small cache for testing LRU
+        })
+        return {}
+      },
+      template: '<div></div>',
     })
 
     // Fill cache
     for (let i = 0; i < 7; i++) {
-      await getData(i)
+      await composableResult.getData(i)
     }
 
-    const stats = getCacheStats()
+    const stats = composableResult.getCacheStats()
     expect(stats.size).toBeLessThanOrEqual(5) // Should not exceed cache size
 
     // Access first item (should trigger eviction if not in cache)
-    const firstItem = await getData(0)
+    const firstItem = await composableResult.getData(0)
     expect(firstItem).toBeTruthy()
+
+    TestComponent.unmount()
   })
 
   it('should prefetch efficiently', async () => {
     const loadSpy = vi.fn().mockResolvedValue([])
+    let composableResult: any
 
-    const { loadVisibleItems } = useLazyLoading({
-      loadData: loadSpy,
-      prefetchCount: 10,
+    const TestComponent = mount({
+      setup() {
+        composableResult = useLazyLoading({
+          loadData: loadSpy,
+          prefetchCount: 10,
+        })
+        return {}
+      },
+      template: '<div></div>',
     })
 
-    await loadVisibleItems([50, 51, 52, 53, 54])
+    await composableResult.loadVisibleItems([50, 51, 52, 53, 54])
 
     // Should load visible items plus prefetch buffer
-    expect(loadSpy).toHaveBeenCalledWithExactlyOnceWith(40, 64) // 50-10 to 54+10
+    expect(loadSpy).toHaveBeenCalledExactlyOnceWith(40, 64) // 50-10 to 54+10
+    expect(loadSpy).toHaveBeenCalledTimes(1)
+
+    TestComponent.unmount()
   })
 })

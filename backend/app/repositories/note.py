@@ -178,10 +178,6 @@ class NoteRepository:
             )
             query = query.filter(or_(*search_conditions))
 
-        # Category filter
-        if search_request.category:
-            query = query.filter(Note.category == search_request.category)
-
         # Tags filter (OR operation)
         if search_request.tags:
             tag_conditions = []
@@ -355,16 +351,6 @@ class NoteRepository:
         favorite_notes = base_query.filter(Note.is_favorite == True).count()
         archived_notes = base_query.filter(Note.is_archived == True).count()
 
-        # Category distribution
-        category_stats = (
-            self.db.query(Note.category, func.count(Note.id))
-            .filter(and_(Note.owner_id == owner_id, Note.is_deleted == False))
-            .group_by(Note.category)
-            .all()
-        )
-
-        categories = {cat or "Uncategorized": count for cat, count in category_stats}
-
         # Week distribution
         week_stats = (
             self.db.query(Note.week_number, func.count(Note.id))
@@ -412,38 +398,12 @@ class NoteRepository:
             "notes_this_month": notes_this_month,
             "favorite_notes": favorite_notes,
             "archived_notes": archived_notes,
-            "categories": categories,
             "notes_by_week": notes_by_week,
             "average_word_count": float(word_count_avg) if word_count_avg else None,
             "total_reading_time": int(total_reading_time)
             if total_reading_time
             else None,
         }
-
-    def get_categories(self, owner_id: int) -> List[str]:
-        """
-        Get all unique categories for a user.
-
-        Args:
-            owner_id: Owner user ID
-
-        Returns:
-            List of unique category names
-        """
-        categories = (
-            self.db.query(Note.category)
-            .filter(
-                and_(
-                    Note.owner_id == owner_id,
-                    Note.is_deleted == False,
-                    Note.category.isnot(None),
-                )
-            )
-            .distinct()
-            .all()
-        )
-
-        return [cat[0] for cat in categories if cat[0]]
 
     def get_tags(self, owner_id: int) -> List[str]:
         """

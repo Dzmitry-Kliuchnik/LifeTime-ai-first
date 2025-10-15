@@ -53,7 +53,8 @@ def test_birthday_weeks_fix():
         if count > 1:
             print(f"    ERROR: Year {year} has {count} birthday weeks (should be 1)")
 
-    return all(count == 1 for count in years_with_birthdays.values())
+    # Use assertion instead of return for pytest compatibility
+    assert all(count == 1 for count in years_with_birthdays.values()), "Some years have multiple birthday weeks"
 
 
 def test_new_year_weeks_fix():
@@ -97,7 +98,8 @@ def test_new_year_weeks_fix():
         if count > 1:
             print(f"    ERROR: Year {year} has {count} new year weeks (should be 1)")
 
-    return all(count == 1 for count in years_with_new_years.values())
+    # Use assertion instead of return for pytest compatibility
+    assert all(count == 1 for count in years_with_new_years.values()), "Some years have multiple new year weeks"
 
 
 def test_edge_cases():
@@ -126,7 +128,8 @@ def test_edge_cases():
             f"  Week {week_index}: {week_start} to {week_end}, type: {week_type.value}"
         )
 
-    return True
+    # Use assertion instead of return for pytest compatibility
+    assert True, "Edge cases test completed successfully"
 
 
 if __name__ == "__main__":

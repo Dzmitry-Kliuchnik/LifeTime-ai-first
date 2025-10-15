@@ -1,11 +1,6 @@
 <template>
   <!-- Header Actions Only Mode (for modal header slot) -->
   <div v-if="headerActionsOnly" class="header-actions-only">
-    <!-- <div class="notes-labels">
-      <h3 class="notes-section-title">My Notes</h3>
-      <p class="notes-section-description">Capture and organize your thoughts</p>
-    </div> -->
-
     <div class="action-buttons-group">
       <button
         v-if="showSearchToggle"
@@ -158,7 +153,6 @@
     <!-- Search Section (always mounted so tests can find component even when hidden) -->
     <div class="search-section" v-show="showSearch" role="search">
       <NotesSearch
-        :available-categories="notesStore.categories"
         :available-tags="notesStore.tags"
         :max-week-number="weekStore.totalWeeks?.total_weeks || 5000"
         :search-results="searchResults"
@@ -192,16 +186,6 @@
         <span class="loading-spinner"></span>
       </div>
 
-      <!-- Search Results Count -->
-      <div v-if="searchResults" class="search-results-count">
-        {{ searchResults.total }} {{ searchResults.total === 1 ? 'result' : 'results' }} found
-      </div>
-
-      <!-- No Results Message -->
-      <div v-if="searchResults && searchResults.notes.length === 0" class="no-results-message">
-        No notes found matching your search criteria. Try adjusting your filters or search terms.
-      </div>
-
       <NotesList
         :notes="displayedNotes"
         :total-notes="notesStore.totalNotes"
@@ -214,7 +198,6 @@
         :description="listDescription"
         :empty-title="emptyTitle"
         :empty-description="emptyDescription"
-        :show-view-toggle="showViewToggle"
         :show-sort-controls="showSortControls"
         :show-load-more="paginationMode === 'loadMore'"
         :show-pagination="paginationMode === 'pagination'"
@@ -252,6 +235,7 @@
         :description="modalDescription"
         variant="drawer"
         :size="isEditMode ? 'large' : 'medium'"
+        :closeOnOverlay="false"
         @update:is-open="handleModalClose"
         @close="handleModalClose"
       >
@@ -273,6 +257,7 @@
       description="Are you sure you want to delete this note? This action cannot be undone."
       variant="modal"
       size="small"
+      :closeOnOverlay="false"
       @update:is-open="showDeleteConfirm = $event"
       @close="cancelDelete"
     >
@@ -395,6 +380,7 @@ import type {
   SortOptions,
 } from '@/types'
 import { useNotesStore } from '@/stores/notes'
+import { useUserStore } from '@/stores/user'
 import { useWeekCalculationStore } from '@/stores/week-calculation'
 import NotesForm from './NotesForm.vue'
 import NotesList from './NotesList.vue'
@@ -588,7 +574,7 @@ const handleFormSubmit = async (data: NoteCreate | NoteUpdate) => {
   }
 
   if (isCreate) {
-    const result = await notesStore.createNote(data as NoteCreate)
+    const result = await notesStore.createNote(data as NoteCreate, props.initialWeekNumber)
     if (result) {
       handleFormSuccess(result)
     } else {
@@ -623,49 +609,128 @@ const handleFormError = (error: string) => {
 }
 
 const handleFavoriteToggle = async (note: NoteResponse) => {
+  console.log('🚀 DIRECT API CALL - Starting favorite toggle for note:', note.id)
+
+  // Prevent duplicate execution
+  if (loadingNoteIds.value.includes(note.id)) {
+    console.log('Note', note.id, 'is already being processed, skipping duplicate call')
+    return
+  }
+
   loadingNoteIds.value.push(note.id)
 
   try {
-    // Call legacy spy methods directly so tests register invocation
-    const storeAny = notesStore as any
-    let success = false
-    if (note.is_favorite && storeAny.unfavoriteNote) {
-      success = await storeAny.unfavoriteNote(note.id)
-    } else if (!note.is_favorite && storeAny.favoriteNote) {
-      success = await storeAny.favoriteNote(note.id)
-    } else if (storeAny.toggleFavorite) {
-      success = await storeAny.toggleFavorite(note.id)
+    const userStore = useUserStore()
+    const userId = userStore.currentUser?.id
+
+    if (!userId) {
+      showNotification('error', 'Error', 'User not authenticated')
+      return
     }
-    if (success) {
+
+    console.log('🌐 Making direct API call...')
+
+    // Direct API call bypassing the store
+    const response = await fetch(
+      `http://localhost:8000/api/v1/notes/${note.id}?user_id=${userId}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ is_favorite: !note.is_favorite }),
+      },
+    )
+
+    console.log('📡 API Response status:', response.status)
+
+    if (response.ok) {
+      const updatedNote = await response.json()
+      console.log('✅ API call successful, updated note:', updatedNote)
+
       const action = note.is_favorite ? 'removed from' : 'added to'
       showNotification('success', 'Favorites Updated', `Note ${action} favorites.`)
       refreshNotes()
     } else {
-      showNotification('error', 'Error', 'Failed to update favorites.')
+      const errorData = await response.json()
+      console.error('❌ API call failed:', response.status, errorData)
+      showNotification(
+        'error',
+        'Error',
+        `Failed to update favorites: ${errorData.detail || response.statusText}`,
+      )
     }
+  } catch (error) {
+    console.error('💥 Network error during favorite toggle:', error)
+    showNotification(
+      'error',
+      'Error',
+      `Network error: ${error instanceof Error ? error.message : String(error)}`,
+    )
   } finally {
     loadingNoteIds.value = loadingNoteIds.value.filter((id) => id !== note.id)
   }
 }
 
 const handleArchiveToggle = async (note: NoteResponse) => {
+  console.log('📁 DIRECT API CALL - Starting archive toggle for note:', note.id)
+
+  // Prevent duplicate execution
+  if (loadingNoteIds.value.includes(note.id)) {
+    console.log('Note', note.id, 'is already being processed, skipping duplicate call')
+    return
+  }
+
   loadingNoteIds.value.push(note.id)
 
   try {
-    const storeAny = notesStore as any
-    let success = false
-    if (storeAny.archiveNote) {
-      success = await storeAny.archiveNote(note.id)
-    } else if (storeAny.toggleArchive) {
-      success = await storeAny.toggleArchive(note.id)
+    const userStore = useUserStore()
+    const userId = userStore.currentUser?.id
+
+    if (!userId) {
+      showNotification('error', 'Error', 'User not authenticated')
+      return
     }
-    if (success) {
+
+    console.log('🌐 Making direct API call to toggle archive...')
+
+    // Direct API call bypassing the store
+    const response = await fetch(
+      `http://localhost:8000/api/v1/notes/${note.id}?user_id=${userId}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ is_archived: !note.is_archived }),
+      },
+    )
+
+    console.log('📡 API Response status:', response.status)
+
+    if (response.ok) {
+      const updatedNote = await response.json()
+      console.log('✅ API call successful, updated note:', updatedNote)
+
       const action = note.is_archived ? 'unarchived' : 'archived'
       showNotification('success', 'Archive Updated', `Note ${action} successfully.`)
       refreshNotes()
     } else {
-      showNotification('error', 'Error', 'Failed to update archive status.')
+      const errorData = await response.json()
+      console.error('❌ API call failed:', response.status, errorData)
+      showNotification(
+        'error',
+        'Error',
+        `Failed to update archive status: ${errorData.detail || response.statusText}`,
+      )
     }
+  } catch (error) {
+    console.error('💥 Network error during archive toggle:', error)
+    showNotification(
+      'error',
+      'Error',
+      `Network error: ${error instanceof Error ? error.message : String(error)}`,
+    )
   } finally {
     loadingNoteIds.value = loadingNoteIds.value.filter((id) => id !== note.id)
   }
@@ -691,14 +756,13 @@ const handleDuplicateNote = async (note: NoteResponse) => {
   const duplicateData: NoteCreate = {
     title: `${note.title} (Copy)`,
     content: note.content,
-    category: note.category,
     tags: note.tags,
     week_number: note.week_number,
     is_favorite: false,
     is_archived: false,
   }
 
-  const result = await notesStore.createNote(duplicateData)
+  const result = await notesStore.createNote(duplicateData, props.initialWeekNumber)
   if (result) {
     showNotification('success', 'Note Duplicated', 'A copy of the note has been created.')
     refreshNotes()
@@ -752,11 +816,17 @@ const handleTagClick = (tag: string) => {
 }
 
 const handleSearch = async (filters: NoteSearchRequest) => {
-  searchFilters.value = filters
+  // If initialWeekNumber is provided, always include it in search filters
+  const searchFiltersWithWeek =
+    props.initialWeekNumber !== undefined
+      ? { ...filters, week_number: props.initialWeekNumber }
+      : filters
+
+  searchFilters.value = searchFiltersWithWeek
   searchError.value = null
 
   try {
-    const results = await notesStore.searchNotes(filters)
+    const results = await notesStore.searchNotes(searchFiltersWithWeek)
     searchResults.value = results
 
     if (!results) {
@@ -771,6 +841,7 @@ const handleClearSearch = () => {
   searchFilters.value = {}
   searchResults.value = null
   searchError.value = null
+  // When clearing search, refresh notes (which will use week filtering if initialWeekNumber is set)
   refreshNotes()
 }
 
@@ -830,6 +901,20 @@ const dismissError = () => {
 const refreshNotes = async () => {
   if (hasActiveFilters.value) {
     await handleSearch(searchFilters.value)
+  } else if (props.initialWeekNumber !== undefined) {
+    // If initialWeekNumber is provided, fetch notes for that specific week
+    const weekResponse = await notesStore.fetchWeekNotes(props.initialWeekNumber)
+    if (weekResponse) {
+      // Transform WeekNotesResponse to NoteListResponse format for consistent display
+      searchResults.value = {
+        notes: weekResponse.notes,
+        total: weekResponse.total_notes,
+        page: 1,
+        size: weekResponse.notes.length,
+        has_next: false,
+        has_prev: false,
+      }
+    }
   } else {
     await notesStore.fetchNotes()
   }
@@ -866,13 +951,34 @@ const removeNotification = (id: string) => {
 // Initialize component
 onMounted(async () => {
   try {
-    await Promise.all([
-      notesStore.fetchNotes({ page: 1, size: props.pageSize }),
-      notesStore.fetchCategories(),
-      notesStore.fetchTags(),
-      weekStore.calculateTotalWeeks(),
-    ])
-  } catch (_e) {
+    if (props.initialWeekNumber !== undefined) {
+      // Load notes for specific week
+      const [weekResponse] = await Promise.all([
+        notesStore.fetchWeekNotes(props.initialWeekNumber),
+        notesStore.fetchTags(),
+        weekStore.calculateTotalWeeks(),
+      ])
+
+      // Transform WeekNotesResponse to NoteListResponse format for consistent display
+      if (weekResponse) {
+        searchResults.value = {
+          notes: weekResponse.notes,
+          total: weekResponse.total_notes,
+          page: 1,
+          size: weekResponse.notes.length,
+          has_next: false,
+          has_prev: false,
+        }
+      }
+    } else {
+      // Load all notes normally
+      await Promise.all([
+        notesStore.fetchNotes({ page: 1, size: props.pageSize }),
+        notesStore.fetchTags(),
+        weekStore.calculateTotalWeeks(),
+      ])
+    }
+  } catch (error) {
     if (notesStore.error) {
       showNotification('error', 'Error', notesStore.error)
     }
@@ -935,7 +1041,7 @@ defineExpose({ favoriteNote, unfavoriteNote, archiveNote, openCreateModal, toggl
   --interface-success: #38a169;
   --interface-error: #e53e3e;
   --interface-warning: #d69e2e;
-  --interface-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --interface-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   --interface-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   --interface-border-radius: 0.5rem;
   --interface-transition: all 0.2s ease;
@@ -999,35 +1105,18 @@ defineExpose({ favoriteNote, unfavoriteNote, archiveNote, openCreateModal, toggl
 /* Header actions only mode - for modal header slot */
 .header-actions-only {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 2rem;
   width: 100%;
-}
-
-.notes-labels {
-  flex: 1;
-  min-width: 0;
-}
-
-.notes-section-title {
-  margin: 0 0 0.25rem 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--interface-text-primary);
-  line-height: 1.2;
-}
-
-.notes-section-description {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--interface-text-secondary);
-  line-height: 1.4;
+  /* Match modal-header padding for consistent width */
+  padding: 0.75rem 1.25rem 0.5rem 1.25rem;
+  box-sizing: border-box;
 }
 
 .action-buttons-group {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 1rem;
   flex-shrink: 0;
 }
@@ -1131,9 +1220,10 @@ defineExpose({ favoriteNote, unfavoriteNote, archiveNote, openCreateModal, toggl
   max-width: 1200px;
   margin: 0 auto;
   padding: 1rem;
-  width: 95%;
+  width: 93%;
+  border: 1px solid;
   border-radius: 0.5rem;
-  background-color: lightgray;
+  background-color: whitesmoke;
 }
 
 .global-loading {
@@ -1186,6 +1276,8 @@ defineExpose({ favoriteNote, unfavoriteNote, archiveNote, openCreateModal, toggl
   flex-direction: column;
   gap: 0.75rem;
   max-width: 24rem;
+  background-color: white;
+  border-radius: 1rem;
 }
 
 .notification {
@@ -1307,7 +1399,6 @@ defineExpose({ favoriteNote, unfavoriteNote, archiveNote, openCreateModal, toggl
 
 .btn-primary {
   background-color: var(--interface-primary);
-  color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -1382,6 +1473,11 @@ defineExpose({ favoriteNote, unfavoriteNote, archiveNote, openCreateModal, toggl
     font-size: 1.75rem;
   }
 
+  /* Match modal-header responsive padding */
+  .header-actions-only {
+    padding: 0.75rem 1rem 0.5rem 1rem;
+  }
+
   .header-content,
   .search-section,
   .notes-content {
@@ -1397,7 +1493,6 @@ defineExpose({ favoriteNote, unfavoriteNote, archiveNote, openCreateModal, toggl
   .confirmation-actions {
     flex-direction: column-reverse;
   }
-
   .btn {
     width: 100%;
     justify-content: center;

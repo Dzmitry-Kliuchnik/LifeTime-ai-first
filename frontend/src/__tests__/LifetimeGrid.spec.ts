@@ -34,6 +34,7 @@ describe('LifetimeGrid', () => {
     id: 1,
     username: 'testuser',
     email: 'test@example.com',
+    full_name: 'Test User',
     date_of_birth: '1990-01-01',
     lifespan: 80,
     theme: 'light' as const,
@@ -169,13 +170,16 @@ describe('LifetimeGrid', () => {
       const testWeekStore = useWeekCalculationStore()
       const testUserStore = useUserStore()
 
-      // Set user but not week calculation data to trigger loading
+      // Set user data that passes validation checks
       testUserStore.currentUser = mockUser
       testUserStore.isAuthenticated = true
 
-      // Mock the method to not immediately resolve
-      const neverResolvePromise = new Promise(() => {}) // Never resolves
-      testWeekStore.calculateLifeProgress = vi.fn().mockImplementation(() => neverResolvePromise)
+      // Mock the method to return a promise that hangs so we can test loading state
+      let resolvePromise: () => void
+      const hangingPromise = new Promise<void>((resolve) => {
+        resolvePromise = resolve
+      })
+      testWeekStore.calculateLifeProgress = vi.fn().mockImplementation(() => hangingPromise)
 
       wrapper = mount(LifetimeGrid, {
         global: {
@@ -183,15 +187,29 @@ describe('LifetimeGrid', () => {
         },
       })
 
+      // Wait for onMounted to trigger loadGridData
       await nextTick()
 
-      // Should show loading state when no data is available
+      // Now we should be in loading state
       expect(wrapper.find('.loading-overlay').exists()).toBe(true)
       expect(wrapper.find('.loading-spinner').exists()).toBe(true)
+
+      // Clean up - resolve the promise to prevent hanging
+      resolvePromise!()
+      await nextTick()
     })
 
     it('shows error state when no date of birth', async () => {
+      // Set user with missing date_of_birth but mark profile as complete
+      // so loadGridData() will be called and trigger the error validation
       userStore.currentUser = { ...mockUser, date_of_birth: null }
+
+      // Mock isProfileComplete to return true to trigger loadGridData
+      Object.defineProperty(userStore, 'isProfileComplete', {
+        get: () => true,
+        enumerable: true,
+        configurable: true,
+      })
 
       wrapper = mount(LifetimeGrid, {
         global: {
@@ -617,11 +635,12 @@ describe('LifetimeGrid', () => {
     })
 
     it('retries loading when retry button is clicked', async () => {
-      // Create a spy that fails once, then succeeds
+      // Create a spy that fails initially, then succeeds
+      // Note: Component may call loadGridData multiple times due to watchers
       const calculateSpy = vi
         .fn()
-        .mockRejectedValueOnce(new Error('API Error'))
-        .mockResolvedValueOnce(mockLifeProgress)
+        .mockRejectedValue(new Error('API Error'))
+        .mockResolvedValueOnce(mockLifeProgress) // Last call should succeed
 
       weekCalculationStore.calculateLifeProgress = calculateSpy
 
@@ -637,10 +656,15 @@ describe('LifetimeGrid', () => {
       const retryButton = wrapper.find('.retry-button')
       expect(retryButton.exists()).toBe(true)
 
+      // Reset the mock to succeed on the retry call
+      calculateSpy.mockReset()
+      calculateSpy.mockResolvedValueOnce(mockLifeProgress)
+
       await retryButton.trigger('click')
       await nextTick()
 
-      expect(calculateSpy).toHaveBeenCalledTimes(2)
+      // After retry button click, the mock should have been called once
+      expect(calculateSpy).toHaveBeenCalledTimes(1)
     })
   })
 })

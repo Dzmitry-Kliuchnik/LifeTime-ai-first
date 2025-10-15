@@ -117,7 +117,6 @@ export interface Note {
   title: string
   content: string
   user_id: number
-  category?: string
   tags?: string[]
   week_number?: number
   is_favorite: boolean
@@ -133,7 +132,6 @@ export interface Note {
 export interface NoteCreate {
   title: string
   content: string
-  category?: string
   tags?: string[]
   week_number?: number
   is_favorite?: boolean
@@ -143,7 +141,6 @@ export interface NoteCreate {
 export interface NoteUpdate {
   title?: string
   content?: string
-  category?: string
   tags?: string[]
   week_number?: number
   is_favorite?: boolean
@@ -155,7 +152,6 @@ export interface NoteResponse {
   title: string
   content: string
   user_id: number
-  category?: string
   tags: string[]
   week_number?: number
   is_favorite: boolean
@@ -168,7 +164,6 @@ export interface NoteResponse {
 
 export interface NoteSearchRequest {
   query?: string
-  category?: string
   tags?: string[]
   week_number?: number
   is_favorite?: boolean

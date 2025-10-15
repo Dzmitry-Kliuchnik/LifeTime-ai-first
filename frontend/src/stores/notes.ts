@@ -22,7 +22,6 @@ export const useNotesStore = defineStore('notes', () => {
   const currentNote = ref<NoteResponse | null>(null)
   const weekNotes = ref<WeekNotesResponse | null>(null)
   const statistics = ref<NoteStatistics | null>(null)
-  const categories = ref<string[]>([])
   const tags = ref<string[]>([])
   const loadingState = ref<LoadingState>('idle')
   const error = ref<string | null>(null)
@@ -47,16 +46,6 @@ export const useNotesStore = defineStore('notes', () => {
   const archivedNotes = computed(() => notes.value.filter((note) => note.is_archived))
 
   const activeNotes = computed(() => notes.value.filter((note) => !note.is_archived))
-
-  const notesByCategory = computed(() => {
-    const grouped: Record<string, NoteResponse[]> = {}
-    notes.value.forEach((note) => {
-      const category = note.category || 'Uncategorized'
-      grouped[category] ??= []
-      grouped[category].push(note)
-    })
-    return grouped
-  })
 
   const notesByWeek = computed(() => {
     const grouped: Record<number, NoteResponse[]> = {}
@@ -93,7 +82,10 @@ export const useNotesStore = defineStore('notes', () => {
     return userStore.currentUser?.id || null
   }
 
-  const createNote = async (noteData: NoteCreate): Promise<NoteResponse | null> => {
+  const createNote = async (
+    noteData: NoteCreate,
+    focusedWeek?: number,
+  ): Promise<NoteResponse | null> => {
     const userId = getUserId()
     if (!userId) {
       setError('User not authenticated')
@@ -104,7 +96,7 @@ export const useNotesStore = defineStore('notes', () => {
       setLoadingState('loading')
       clearError()
 
-      const note = await notesApi.createNote(userId, noteData)
+      const note = await notesApi.createNote(userId, noteData, focusedWeek)
 
       // Add to the beginning of the notes array
       notes.value.unshift(note)
@@ -161,23 +153,32 @@ export const useNotesStore = defineStore('notes', () => {
       setLoadingState('loading')
       clearError()
 
+      console.log('Calling API to update note:', { noteId, userId, noteData })
       const updatedNote = await notesApi.updateNote(noteId, userId, noteData)
+      console.log('API response received:', updatedNote)
 
       // Update in notes array
       const index = notes.value.findIndex((n) => n.id === noteId)
       if (index !== -1) {
         notes.value[index] = updatedNote
+        console.log('Updated note in array at index:', index)
+      } else {
+        console.warn('Note not found in array for update, noteId:', noteId)
       }
 
       // Update current note if it's the same
       if (currentNote.value?.id === noteId) {
         currentNote.value = updatedNote
+        console.log('Updated current note')
       }
 
       setLoadingState('success')
+      console.log('updateNote returning:', updatedNote)
       return updatedNote
     } catch (err) {
       const errorMessage = apiUtils.getErrorMessage(err)
+      console.error('updateNote failed with error:', err)
+      console.error('Error message:', errorMessage)
       setError(`Failed to update note: ${errorMessage}`)
       setLoadingState('error')
       return null
@@ -332,24 +333,6 @@ export const useNotesStore = defineStore('notes', () => {
     }
   }
 
-  const fetchCategories = async (): Promise<string[] | null> => {
-    const userId = getUserId()
-    if (!userId) {
-      setError('User not authenticated')
-      return null
-    }
-
-    try {
-      const categoryList = await notesApi.getCategories(userId)
-      categories.value = categoryList
-      return categoryList
-    } catch (err) {
-      const errorMessage = apiUtils.getErrorMessage(err)
-      setError(`Failed to fetch categories: ${errorMessage}`)
-      return null
-    }
-  }
-
   const fetchTags = async (): Promise<string[] | null> => {
     const userId = getUserId()
     if (!userId) {
@@ -375,7 +358,15 @@ export const useNotesStore = defineStore('notes', () => {
       return false
     }
 
-    return (await updateNote(noteId, { is_favorite: !note.is_favorite })) !== null
+    console.log('toggleFavorite called for note:', {
+      noteId,
+      currentFavoriteStatus: note.is_favorite,
+    })
+    const result = await updateNote(noteId, { is_favorite: !note.is_favorite })
+    console.log('updateNote returned:', result)
+    console.log('toggleFavorite will return:', result !== null)
+    // Don't clear the error if updateNote failed - let the error propagate
+    return result !== null
   }
 
   const toggleArchive = async (noteId: number): Promise<boolean> => {
@@ -436,7 +427,6 @@ export const useNotesStore = defineStore('notes', () => {
     currentNote,
     weekNotes,
     statistics,
-    categories,
     tags,
     loadingState,
     error,
@@ -451,7 +441,6 @@ export const useNotesStore = defineStore('notes', () => {
     favoriteNotes,
     archivedNotes,
     activeNotes,
-    notesByCategory,
     notesByWeek,
     totalPages,
     isLoading,
@@ -467,7 +456,6 @@ export const useNotesStore = defineStore('notes', () => {
     searchNotes,
     fetchWeekNotes,
     fetchStatistics,
-    fetchCategories,
     fetchTags,
     toggleFavorite,
     toggleArchive,

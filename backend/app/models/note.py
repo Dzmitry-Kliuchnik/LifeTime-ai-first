@@ -46,10 +46,7 @@ class Note(Base):
         Boolean, default=False, nullable=False, comment="Soft delete flag"
     )
 
-    # Categories and tags
-    category: Mapped[Optional[str]] = mapped_column(
-        String(100), nullable=True, comment="Note category"
-    )
+    # Tags
     tags: Mapped[Optional[str]] = mapped_column(
         Text, nullable=True, comment="Comma-separated tags"
     )
@@ -104,7 +101,6 @@ class Note(Base):
         Index(
             "ix_notes_owner_note_date", "owner_id", "note_date"
         ),  # For date-based queries
-        Index("ix_notes_category", "category"),
         Index("ix_notes_title_search", "title"),  # For text search
         Index(
             "ix_notes_week_date", "week_number", "note_date"

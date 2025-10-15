@@ -542,8 +542,20 @@ const handleRetry = () => {
 
 // Data loading
 const loadGridData = async () => {
+  if (!userStore.isProfileComplete) {
+    error.value = 'Complete user profile is required to display the life grid'
+    return
+  }
+
   if (!userStore.hasDateOfBirth) {
     error.value = 'Date of birth is required to display the life grid'
+    return
+  }
+
+  // Additional validation for the specific data we're about to send
+  const currentUser = userStore.currentUser
+  if (!currentUser?.date_of_birth?.trim() || !currentUser.lifespan || currentUser.lifespan <= 0) {
+    error.value = 'Valid user data is required to display the life grid'
     return
   }
 
@@ -552,7 +564,7 @@ const loadGridData = async () => {
 
   try {
     await weekCalculationStore.calculateLifeProgress({
-      date_of_birth: userStore.currentUser!.date_of_birth!,
+      date_of_birth: currentUser.date_of_birth,
       lifespan_years: userStore.userLifespan,
       timezone: userStore.userTimezone,
     })

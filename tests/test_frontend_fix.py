@@ -139,10 +139,11 @@ def test_frontend_fix():
 
     if birthday_pass and new_year_pass:
         print("✅ Frontend fix is working correctly!")
-        return True
     else:
         print("❌ Frontend fix needs more work")
-        return False
+
+    # Use assertion instead of return for pytest compatibility
+    assert birthday_pass and new_year_pass, "Frontend fix tests failed"
 
 
 if __name__ == "__main__":

@@ -221,15 +221,15 @@ async def calculate_life_progress_endpoint(
 )
 async def get_life_progress(
     date_of_birth: date = Query(
-        ..., description="Date of birth in YYYY-MM-DD format", example="1990-01-15"
+        ..., description="Date of birth in YYYY-MM-DD format", examples=["1990-01-15"]
     ),
     lifespan_years: int = Query(
-        80, ge=1, le=150, description="Expected lifespan in years", example=80
+        80, ge=1, le=150, description="Expected lifespan in years", examples=[80]
     ),
     timezone: str = Query(
         "UTC",
         description="Timezone for current time calculation (e.g., 'America/New_York', 'Europe/London')",
-        example="UTC",
+        examples=["UTC"],
     ),
 ) -> LifeProgressResponse:
     """
@@ -298,10 +298,10 @@ async def get_life_progress(
 )
 async def get_total_weeks(
     date_of_birth: date = Query(
-        ..., description="Date of birth in YYYY-MM-DD format", example="1990-01-15"
+        ..., description="Date of birth in YYYY-MM-DD format", examples=["1990-01-15"]
     ),
     lifespan_years: int = Query(
-        80, ge=1, le=150, description="Expected lifespan in years", example=80
+        80, ge=1, le=150, description="Expected lifespan in years", examples=[80]
     ),
 ) -> TotalWeeksResponse:
     """
@@ -377,12 +377,12 @@ async def get_total_weeks(
 )
 async def get_current_week(
     date_of_birth: date = Query(
-        ..., description="Date of birth in YYYY-MM-DD format", example="1990-01-15"
+        ..., description="Date of birth in YYYY-MM-DD format", examples=["1990-01-15"]
     ),
     timezone: str = Query(
         "UTC",
         description="Timezone for current time calculation (e.g., 'America/New_York', 'Europe/London')",
-        example="UTC",
+        examples=["UTC"],
     ),
 ) -> CurrentWeekResponse:
     """

@@ -8,68 +8,68 @@
       @click="handleOverlayClick"
       :aria-hidden="!isOpen"
     >
-        <!-- Drawer/Modal Container -->
-        <dialog
-          v-if="isOpen"
-          ref="modalContent"
-          class="modal-content solid-modal"
-          :class="[`modal-${variant}`, `modal-${size}`, { 'modal-mobile': isMobile }]"
-          :style="solidModalStyles"
-          :aria-labelledby="titleId"
-          :aria-describedby="descriptionId"
-          open
-          @click.stop
-        >
-            <!-- Modal Header -->
-            <div class="modal-header" :style="solidModalStyles">
-              <div class="modal-header-top">
-                <div class="modal-title-section">
-                  <h2 v-if="title" :id="titleId" class="modal-title">
-                    {{ title }}
-                  </h2>
-                  <p v-if="description" :id="descriptionId" class="modal-description">
-                    {{ description }}
-                  </p>
-                </div>
-                <button
-                  v-if="showCloseButton"
-                  type="button"
-                  class="modal-close-button"
-                  @click="close"
-                  aria-label="Close modal"
-                >
-                  <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M18 6L6 18M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <!-- Header Actions Slot -->
-              <div v-if="$slots.headerActions" class="modal-header-actions">
-                <slot name="headerActions" :close="close" :isOpen="isOpen" />
-              </div>
+      <!-- Drawer/Modal Container -->
+      <dialog
+        v-if="isOpen"
+        ref="modalContent"
+        class="modal-content solid-modal"
+        :class="[`modal-${variant}`, `modal-${size}`, { 'modal-mobile': isMobile }]"
+        :style="solidModalStyles"
+        :aria-labelledby="titleId"
+        :aria-describedby="descriptionId"
+        open
+        @click.stop
+      >
+        <!-- Modal Header -->
+        <div class="modal-header" :style="solidModalStyles">
+          <div class="modal-header-top">
+            <div class="modal-title-section">
+              <h2 v-if="title" :id="titleId" class="modal-title">
+                {{ title }}
+              </h2>
+              <p v-if="description" :id="descriptionId" class="modal-description">
+                {{ description }}
+              </p>
             </div>
+            <button
+              v-if="showCloseButton"
+              type="button"
+              class="modal-close-button"
+              @click="close"
+              aria-label="Close modal"
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
 
-            <!-- Modal Body -->
-            <div class="modal-body" :style="solidModalStyles">
-              <slot :close="close" :isOpen="isOpen" />
-            </div>
+          <!-- Header Actions Slot -->
+          <div v-if="$slots.headerActions" class="modal-header-actions">
+            <slot name="headerActions" :close="close" :isOpen="isOpen" />
+          </div>
+        </div>
 
-            <!-- Modal Footer -->
-            <div v-if="$slots.footer" class="modal-footer" :style="solidModalStyles">
-              <slot name="footer" :close="close" :isOpen="isOpen" />
-            </div>
-        </dialog>
-      </div>
+        <!-- Modal Body -->
+        <div class="modal-body" :style="solidModalStyles">
+          <slot :close="close" :isOpen="isOpen" />
+        </div>
+
+        <!-- Modal Footer -->
+        <div v-if="$slots.footer" class="modal-footer" :style="solidModalStyles">
+          <slot name="footer" :close="close" :isOpen="isOpen" />
+        </div>
+      </dialog>
+    </div>
   </teleport>
 </template>
 
@@ -287,13 +287,12 @@ defineExpose({
 <style scoped>
 /* CSS Variables for theming */
 :root {
-  --modal-z-index: 2147483647;
+  --modal-z-index: 1000;
   --modal-overlay-bg: rgba(0, 0, 0, 0.9);
-  --modal-bg: #ffffff !important; /* Force completely solid white background */
+  --modal-bg: #ffffff;
   --modal-border-radius: 0.75rem;
   --modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
-  --modal-border: 4px solid #4a5568;
-  --modal-header-border: 1px solid #e2e8f0;
+  --modal-border: 1px solid #e2e8f0;
   --modal-text-primary: #1a202c;
   --modal-text-secondary: #718096;
   --modal-close-hover: #f7fafc;
@@ -304,9 +303,8 @@ defineExpose({
 @media (prefers-color-scheme: dark) {
   :root {
     --modal-overlay-bg: rgba(0, 0, 0, 0.95);
-    --modal-bg: #2d3748 !important; /* Force solid dark background */
-    --modal-border: 4px solid #a0aec0;
-    --modal-header-border: 1px solid #4a5568;
+    --modal-bg: #2d3748;
+    --modal-border: 1px solid #4a5568;
     --modal-text-primary: #f7fafc;
     --modal-text-secondary: #a0aec0;
     --modal-close-hover: #4a5568;
@@ -320,52 +318,37 @@ defineExpose({
   left: 0;
   right: 0;
   bottom: 0;
-  width: 100vw;
-  height: 100vh;
   background-color: var(--modal-overlay-bg);
-  z-index: var(--modal-z-index) !important;
+  z-index: var(--modal-z-index);
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Ensure overlay is fully visible */
-  opacity: 1 !important;
-  /* Force it to be above everything */
-  isolation: isolate;
 }
 
 /* Modal Content Base */
 .modal-content {
-  background-color: var(--modal-bg) !important;
-  border-radius: var(--modal-border-radius);
+  background-color: var(--modal-bg);
+  border-radius: 0.5rem;
   box-shadow: var(--modal-shadow);
-  border: var(--modal-border) !important;
+  border: var(--modal-border);
   display: flex;
   flex-direction: column;
   max-height: 80vh;
-  min-height: auto;
   overflow: hidden;
-  position: relative !important;
-  opacity: 1 !important; /* Force modal content to be fully opaque */
-  z-index: 2147483647 !important; /* Ensure content is above everything */
-  /* Force solid styling to prevent any transparency */
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  position: relative;
 }
 
 /* Modal Variants */
 .modal-modal {
   margin: 1rem;
-  width: 100%;
-  max-width: var(--modal-max-width, 32rem);
+  width: 75%;
   max-height: 65vh;
 }
 
 .modal-drawer {
-  position: fixed;
   top: 0;
   right: 0;
   max-height: none;
-  border-radius: 0;
   border-right: none;
   border-top: none;
   border-bottom: none;
@@ -433,11 +416,9 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding: 0.75rem 1.25rem 0.5rem 1.25rem;
-  border-bottom: var(--modal-header-border);
+  padding: 0.75rem 1.25rem 0.5rem 0rem;
+  border-bottom: var(--modal-border);
   flex-shrink: 0;
-  background-color: var(--modal-bg) !important;
-  opacity: 1 !important;
 }
 
 .modal-header-top {
@@ -460,7 +441,7 @@ defineExpose({
 
 .modal-title {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 600;
   color: var(--modal-text-primary);
   line-height: 1.4;
@@ -507,130 +488,13 @@ defineExpose({
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 400px;
-  /* Force modal body to have completely solid background */
-  background-color: var(--modal-bg) !important;
-  opacity: 1 !important;
-  /* Force solid appearance */
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
 }
 
 /* Modal Footer */
 .modal-footer {
   padding: 0.75rem 1.5rem 1rem 1.5rem;
-  border-top: var(--modal-header-border);
+  border-top: var(--modal-border);
   flex-shrink: 0;
-  background-color: var(--modal-bg) !important;
-  opacity: 1 !important;
-}
-
-/* Transitions */
-.modal-overlay-enter-active,
-.modal-overlay-leave-active {
-  transition: opacity var(--modal-transition-duration) ease;
-}
-
-.modal-overlay-enter-from,
-.modal-overlay-leave-to {
-  opacity: 0;
-}
-
-.modal-content-enter-active,
-.modal-content-leave-active {
-  transition: all var(--modal-transition-duration) ease;
-}
-
-/* Modal transition */
-.modal-modal.modal-content-enter-from,
-.modal-modal.modal-content-leave-to {
-  opacity: 0;
-  transform: scale(0.95) translateY(-1rem);
-}
-
-/* Drawer transition */
-.modal-drawer.modal-content-enter-from,
-.modal-drawer.modal-content-leave-to {
-  transform: translateX(100%);
-}
-
-/* Fullscreen transition */
-.modal-fullscreen.modal-content-enter-from,
-.modal-fullscreen.modal-content-leave-to {
-  opacity: 0;
-  transform: scale(0.98);
-}
-
-/* Anti-transparency utility classes */
-dialog.modal-content,
-dialog.modal-content *,
-.modal-content *,
-.modal-header *,
-.modal-body *,
-.modal-footer * {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
-dialog.modal-content,
-.modal-content,
-.modal-header,
-.modal-body,
-.modal-footer {
-  background-color: var(--modal-bg) !important;
-  opacity: 1 !important;
-}
-
-/* Force dialog element to be completely solid */
-dialog[open] {
-  background-color: var(--modal-bg) !important;
-  opacity: 1 !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: 5px solid hsl(253, 72%, 51%) !important; /* Red border for high visibility */
-}
-
-/* Solid modal class - maximum opacity enforcement */
-.solid-modal {
-  background-color: #ffffff !important;
-  opacity: 1 !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: 5px solid hsl(253, 72%, 51%) !important; /* Red border for high visibility */
-  border-radius: 0.75rem !important;
-  /* Override CSS variables locally */
-  --modal-bg: #ffffff !important;
-  --modal-overlay-bg: rgba(0, 0, 0, 0.95) !important;
-}
-
-.solid-modal,
-.solid-modal * {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
-.solid-modal > *,
-.solid-modal .modal-header,
-.solid-modal .modal-body,
-.solid-modal .modal-footer {
-  background-color: #ffffff !important;
-  opacity: 1 !important;
-}
-
-/* Nuclear option - force everything to be solid */
-[class*='modal'] {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
-.modal-overlay,
-.modal-content,
-.modal-header,
-.modal-body,
-.modal-footer,
-dialog {
-  background-color: unset;
-  background-color: #ffffff !important;
-  opacity: 1 !important;
 }
 
 /* Scrollbar styling */
@@ -742,15 +606,9 @@ dialog {
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-  .modal-overlay-enter-active,
-  .modal-overlay-leave-active,
-  .modal-content-enter-active,
-  .modal-content-leave-active {
-    transition-duration: 0.1s;
-  }
-
-  .modal-close-button {
-    transition: none;
+  * {
+    transition: none !important;
+    animation: none !important;
   }
 }
 </style>

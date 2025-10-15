@@ -23,6 +23,31 @@ class UserByNameCreate(BaseModel):
         14, ge=8, le=72, description="UI font size preference"
     )
 
+    @field_validator("date_of_birth")
+    @classmethod
+    def validate_date_of_birth(cls, v: Optional[date]) -> Optional[date]:
+        """Validate date of birth is not in the future."""
+        if v is None:
+            return v
+
+        today = date.today()
+
+        if v > today:
+            raise ValueError(
+                f"Invalid date of birth: '{v}' is in the future. "
+                f"Please provide a date on or before today ({today})."
+            )
+
+        # Check if date is reasonable (not more than 150 years ago)
+        max_age_years = 150
+        min_birth_date = date(today.year - max_age_years, today.month, today.day)
+        if v < min_birth_date:
+            raise ValueError(
+                f"Invalid date of birth: '{v}' is too old (more than {max_age_years} years ago). "
+                f"Please provide a date after {min_birth_date}."
+            )
+        return v
+
     @field_validator("theme")
     @classmethod
     def validate_theme(cls, v: Optional[str]) -> Optional[str]:
@@ -77,15 +102,22 @@ class UserProfile(BaseModel):
         """Validate date of birth is not in the future."""
         if v is None:
             return v
-        if v > date.today():
-            raise ValueError("Date of birth cannot be in the future")
-        # Check if date is reasonable (not more than 150 years ago)
+
         today = date.today()
+
+        if v > today:
+            raise ValueError(
+                f"Invalid date of birth: '{v}' is in the future. "
+                f"Please provide a date on or before today ({today})."
+            )
+
+        # Check if date is reasonable (not more than 150 years ago)
         max_age_years = 150
         min_birth_date = date(today.year - max_age_years, today.month, today.day)
         if v < min_birth_date:
             raise ValueError(
-                f"Date of birth cannot be more than {max_age_years} years ago"
+                f"Invalid date of birth: '{v}' is too old (more than {max_age_years} years ago). "
+                f"Please provide a date after {min_birth_date}."
             )
         return v
 
@@ -147,15 +179,22 @@ class UserUpdate(BaseModel):
         """Validate date of birth is not in the future."""
         if v is None:
             return v
-        if v > date.today():
-            raise ValueError("Date of birth cannot be in the future")
-        # Check if date is reasonable (not more than 150 years ago)
+
         today = date.today()
+
+        if v > today:
+            raise ValueError(
+                f"Invalid date of birth: '{v}' is in the future. "
+                f"Please provide a date on or before today ({today})."
+            )
+
+        # Check if date is reasonable (not more than 150 years ago)
         max_age_years = 150
         min_birth_date = date(today.year - max_age_years, today.month, today.day)
         if v < min_birth_date:
             raise ValueError(
-                f"Date of birth cannot be more than {max_age_years} years ago"
+                f"Invalid date of birth: '{v}' is too old (more than {max_age_years} years ago). "
+                f"Please provide a date after {min_birth_date}."
             )
         return v
 

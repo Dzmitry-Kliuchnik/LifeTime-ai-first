@@ -5,7 +5,13 @@ Pydantic schemas for Note model validation and serialization.
 from datetime import date, datetime
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import (
+    BaseModel,
+    Field,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 
 class NoteEditHistoryEntry(BaseModel):
@@ -31,7 +37,6 @@ class NoteBase(BaseModel):
         ..., min_length=1, max_length=500, description="Note title or subject"
     )
     content: str = Field(..., min_length=1, description="Main note content")
-    category: Optional[str] = Field(None, max_length=100, description="Note category")
     tags: Optional[str] = Field(None, description="Comma-separated tags")
     is_favorite: bool = Field(
         False, description="Whether the note is marked as favorite"
@@ -44,16 +49,32 @@ class NoteBase(BaseModel):
         None, ge=0, description="Week number since user's birth (0-based)"
     )
 
-    @validator("tags", pre=True)
+    @field_validator("tags", mode="before")
+    @classmethod
     def validate_tags(cls, v):
-        """Validate and clean tags format."""
+        """Validate and clean tags format with enhanced empty value handling."""
         if v is None:
-            return v
-        # Clean up tags: remove extra spaces, duplicates
+            return None
+
+        # Handle array input from frontend
+        if isinstance(v, list):
+            # Convert array to comma-separated string
+            tags = [str(tag).strip() for tag in v if str(tag).strip()]
+            return ",".join(sorted(set(tags))) if tags else None
+
+        # Handle string input (existing functionality)
         if isinstance(v, str):
+            # Handle empty string or whitespace-only string
+            if not v.strip():
+                return None
             tags = [tag.strip() for tag in v.split(",") if tag.strip()]
-            return ",".join(sorted(set(tags)))
-        return v
+            return ",".join(sorted(set(tags))) if tags else None
+
+        # For any other type, convert to string and try to process
+        if v:
+            return cls.validate_tags(str(v))
+
+        return None
 
 
 class NoteCreate(NoteBase):
@@ -70,7 +91,6 @@ class NoteUpdate(BaseModel):
         None, min_length=1, max_length=500, description="Note title or subject"
     )
     content: Optional[str] = Field(None, min_length=1, description="Main note content")
-    category: Optional[str] = Field(None, max_length=100, description="Note category")
     tags: Optional[str] = Field(None, description="Comma-separated tags")
     is_favorite: Optional[bool] = Field(
         None, description="Whether the note is marked as favorite"
@@ -85,16 +105,32 @@ class NoteUpdate(BaseModel):
         None, ge=0, description="Week number since user's birth (0-based)"
     )
 
-    @validator("tags", pre=True)
+    @field_validator("tags", mode="before")
+    @classmethod
     def validate_tags(cls, v):
-        """Validate and clean tags format."""
+        """Validate and clean tags format with enhanced empty value handling."""
         if v is None:
-            return v
-        # Clean up tags: remove extra spaces, duplicates
+            return None
+
+        # Handle array input from frontend
+        if isinstance(v, list):
+            # Convert array to comma-separated string
+            tags = [str(tag).strip() for tag in v if str(tag).strip()]
+            return ",".join(sorted(set(tags))) if tags else None
+
+        # Handle string input (existing functionality)
         if isinstance(v, str):
+            # Handle empty string or whitespace-only string
+            if not v.strip():
+                return None
             tags = [tag.strip() for tag in v.split(",") if tag.strip()]
-            return ",".join(sorted(set(tags)))
-        return v
+            return ",".join(sorted(set(tags))) if tags else None
+
+        # For any other type, convert to string and try to process
+        if v:
+            return cls.validate_tags(str(v))
+
+        return None
 
 
 class NoteResponse(NoteBase):
@@ -115,6 +151,13 @@ class NoteResponse(NoteBase):
         None, description="Edit history entries"
     )
 
+    @field_serializer("tags")
+    def serialize_tags(self, value: Optional[str]) -> Optional[List[str]]:
+        """Convert comma-separated tags string to array for frontend."""
+        if not value:
+            return None
+        return [tag.strip() for tag in value.split(",") if tag.strip()]
+
     class Config:
         from_attributes = True
 
@@ -133,7 +176,6 @@ class NoteSearchRequest(BaseModel):
     """Schema for note search requests."""
 
     query: Optional[str] = Field(None, description="Search query for title and content")
-    category: Optional[str] = Field(None, description="Filter by category")
     tags: Optional[List[str]] = Field(None, description="Filter by tags (OR operation)")
     week_number: Optional[int] = Field(
         None, ge=0, description="Filter by specific week number"
@@ -150,27 +192,28 @@ class NoteSearchRequest(BaseModel):
     is_archived: Optional[bool] = Field(None, description="Filter by archived status")
     include_deleted: bool = Field(False, description="Include soft-deleted notes")
 
-    @validator("week_range_end")
-    def validate_week_range(cls, v, values):
-        """Validate that week range end is not less than start."""
+    @model_validator(mode="after")
+    def validate_ranges(self):
+        """Validate that range end values are not less than start values."""
+        # Validate week range
         if (
-            v is not None
-            and "week_range_start" in values
-            and values["week_range_start"] is not None
+            self.week_range_end is not None
+            and self.week_range_start is not None
+            and self.week_range_end < self.week_range_start
         ):
-            if v < values["week_range_start"]:
-                raise ValueError(
-                    "week_range_end must be greater than or equal to week_range_start"
-                )
-        return v
+            raise ValueError(
+                "week_range_end must be greater than or equal to week_range_start"
+            )
 
-    @validator("date_to")
-    def validate_date_range(cls, v, values):
-        """Validate that date_to is not before date_from."""
-        if v is not None and "date_from" in values and values["date_from"] is not None:
-            if v < values["date_from"]:
-                raise ValueError("date_to must be greater than or equal to date_from")
-        return v
+        # Validate date range
+        if (
+            self.date_to is not None
+            and self.date_from is not None
+            and self.date_to < self.date_from
+        ):
+            raise ValueError("date_to must be greater than or equal to date_from")
+
+        return self
 
 
 class WeekNotesResponse(BaseModel):
@@ -191,7 +234,6 @@ class NoteStatistics(BaseModel):
     notes_this_month: int = Field(..., description="Number of notes created this month")
     favorite_notes: int = Field(..., description="Number of favorite notes")
     archived_notes: int = Field(..., description="Number of archived notes")
-    categories: Dict[str, int] = Field(..., description="Note count by category")
     notes_by_week: Dict[int, int] = Field(..., description="Note count by week number")
     average_word_count: Optional[float] = Field(
         None, description="Average word count per note"

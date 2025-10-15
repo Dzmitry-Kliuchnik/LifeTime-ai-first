@@ -1,7 +1,5 @@
 <template>
   <form @submit.prevent="handleSubmit" class="notes-form">
-    <div class="form-header"></div>
-
     <div class="form-content">
       <!-- Title Field -->
       <div class="form-group">
@@ -45,33 +43,6 @@
         <div class="character-count">{{ formData.content.length }}/10000</div>
       </div>
 
-      <!-- Category Field -->
-      <div class="form-group">
-        <label for="category" class="form-label">Category</label>
-        <div class="category-input-container">
-          <input
-            id="category"
-            v-model="formData.category"
-            type="text"
-            class="form-input"
-            :class="{ error: errors.category }"
-            placeholder="Enter or select category"
-            list="categories"
-            maxlength="100"
-            @blur="validateCategory"
-            @input="clearFieldError('category')"
-          />
-          <datalist id="categories">
-            <option v-for="category in availableCategories" :key="category" :value="category">
-              {{ category }}
-            </option>
-          </datalist>
-        </div>
-        <div v-if="errors.category" class="error-message">
-          {{ errors.category }}
-        </div>
-      </div>
-
       <!-- Tags Field -->
       <div class="form-group">
         <label for="tags" class="form-label">Tags</label>
@@ -113,27 +84,6 @@
           {{ errors.tags }}
         </div>
         <div class="helper-text">Press Enter or comma to add tags. Maximum 10 tags.</div>
-      </div>
-
-      <!-- Week Number Field -->
-      <div class="form-group">
-        <label for="weekNumber" class="form-label">Week Number</label>
-        <input
-          id="weekNumber"
-          v-model.number="formData.week_number"
-          type="number"
-          class="form-input"
-          :class="{ error: errors.week_number }"
-          placeholder="Week number (optional)"
-          :min="0"
-          :max="maxWeekNumber"
-          @blur="validateWeekNumber"
-          @input="clearFieldError('week_number')"
-        />
-        <div v-if="errors.week_number" class="error-message">
-          {{ errors.week_number }}
-        </div>
-        <div class="helper-text">Current week: {{ currentWeek }}. Maximum: {{ maxWeekNumber }}</div>
       </div>
 
       <!-- Favorite Toggle -->
@@ -219,7 +169,6 @@ const weekStore = useWeekCalculationStore()
 const formData = ref<NoteCreate & { week_number?: number }>({
   title: '',
   content: '',
-  category: '',
   tags: [] as string[],
   week_number: undefined,
   is_favorite: false,
@@ -235,7 +184,6 @@ const generalError = ref<string | null>(null)
 const errors = ref<Record<string, string>>({})
 
 // Available options
-const availableCategories = computed(() => notesStore.categories)
 const availableTags = computed(() => notesStore.tags)
 
 // Week information
@@ -259,7 +207,6 @@ watch(
       formData.value = {
         title: newNote.title,
         content: newNote.content,
-        category: newNote.category || '',
         tags: [...(newNote.tags || [])],
         week_number: newNote.week_number || undefined,
         is_favorite: newNote.is_favorite,
@@ -270,10 +217,9 @@ watch(
   { immediate: true },
 )
 
-// Load categories and tags on mount
+// Load tags on mount
 onMounted(async () => {
   await Promise.all([
-    notesStore.fetchCategories(),
     notesStore.fetchTags(),
     weekStore.calculateCurrentWeek(),
     weekStore.calculateTotalWeeks(),
@@ -304,32 +250,6 @@ const validateContent = () => {
     errors.value.content = 'Content must be less than 10,000 characters'
   } else {
     delete errors.value.content
-  }
-}
-
-const validateCategory = () => {
-  const category = formData.value.category?.trim() || ''
-  if (category && category.length > 100) {
-    errors.value.category = 'Category must be less than 100 characters'
-  } else {
-    delete errors.value.category
-  }
-}
-
-const validateWeekNumber = () => {
-  const weekNumber = formData.value.week_number
-  if (weekNumber !== undefined && weekNumber !== null) {
-    if (weekNumber < 0) {
-      errors.value.week_number = 'Week number cannot be negative'
-    } else if (weekNumber > currentWeek.value) {
-      errors.value.week_number = 'Cannot create notes for future weeks'
-    } else if (weekNumber > maxWeekNumber.value) {
-      errors.value.week_number = `Week number cannot exceed ${maxWeekNumber.value}`
-    } else {
-      delete errors.value.week_number
-    }
-  } else {
-    delete errors.value.week_number
   }
 }
 
@@ -385,8 +305,6 @@ const handleSubmit = async () => {
   // Validate all fields
   validateTitle()
   validateContent()
-  validateCategory()
-  validateWeekNumber()
   validateTags()
 
   if (!isFormValid.value) {
@@ -402,8 +320,7 @@ const handleSubmit = async () => {
     const submitData: NoteCreate | NoteUpdate = {
       title: formData.value.title.trim(),
       content: formData.value.content.trim(),
-      category: formData.value.category?.trim() || undefined,
-      tags: formData.value.tags && formData.value.tags.length > 0 ? formData.value.tags : undefined,
+      tags: formData.value.tags || [],
       week_number: formData.value.week_number || undefined,
       is_favorite: formData.value.is_favorite,
       is_archived: formData.value.is_archived,
@@ -432,7 +349,6 @@ const resetForm = () => {
     formData.value = {
       title: '',
       content: '',
-      category: '',
       tags: [],
       week_number: undefined,
       is_favorite: false,
@@ -451,8 +367,6 @@ defineExpose({
   validateForm: () => {
     validateTitle()
     validateContent()
-    validateCategory()
-    validateWeekNumber()
     validateTags()
     return isFormValid.value
   },
@@ -468,18 +382,6 @@ defineExpose({
   margin: 0 auto;
 }
 
-.form-header {
-  border-bottom: 1px solid var(--border-color, #e2e8f0);
-  padding-bottom: 1rem;
-}
-
-.form-title {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--text-primary, #1a202c);
-}
-
 .form-content {
   display: flex;
   flex-direction: column;
@@ -493,8 +395,8 @@ defineExpose({
 }
 
 .form-label {
-  font-weight: 500;
-  font-size: 0.875rem;
+  font-weight: 600;
+  font-size: 0.9rem;
 }
 
 .form-label.required::after {
@@ -505,21 +407,19 @@ defineExpose({
 .form-input,
 .form-textarea {
   padding: 0.75rem;
-  border: 1px solid var(--border-color, #e2e8f0);
+  border: 1px solid;
   border-radius: 0.375rem;
   font-size: 1rem;
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
-  background-color: var(--bg-color, #ffffff);
-  color: var(--text-primary, #1a202c);
 }
 
 .form-input:focus,
 .form-textarea:focus {
   outline: none;
   border-color: var(--primary-color, #3182ce);
-  box-shadow: 0 0 0 3px var(--primary-color-alpha, rgba(49, 130, 206, 0.1));
+  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
 }
 
 .form-input.error,
@@ -539,7 +439,6 @@ defineExpose({
   align-self: flex-end;
 }
 
-.category-input-container,
 .tags-input-container {
   position: relative;
 }

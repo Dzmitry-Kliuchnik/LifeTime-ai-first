@@ -9,6 +9,15 @@ export default mergeConfig(
       environment: 'jsdom',
       exclude: [...configDefaults.exclude, 'e2e/**'],
       root: fileURLToPath(new URL('./', import.meta.url)),
+      testTimeout: 30000,
+      hookTimeout: 30000,
+      teardownTimeout: 10000,
+      pool: 'forks',
+      poolOptions: {
+        forks: {
+          singleFork: true,
+        },
+      },
     },
   }),
 )

@@ -39,7 +39,6 @@ describe('NotesForm', () => {
     title: 'Test Note',
     content: 'This is a test note content',
     user_id: 1,
-    category: 'Work',
     tags: ['important', 'project'],
     week_number: 42,
     is_favorite: true,
@@ -113,30 +112,24 @@ describe('NotesForm', () => {
 
       const titleInput = wrapper.find('#title') as any
       const contentTextarea = wrapper.find('#content') as any
-      const categoryInput = wrapper.find('#category') as any
-      const weekInput = wrapper.find('#weekNumber') as any
       const favoriteCheckbox = wrapper.find('#favorite') as any
       const archivedCheckbox = wrapper.find('#archived') as any
 
       expect(titleInput.element.value).toBe('Test Note')
       expect(contentTextarea.element.value).toBe('This is a test note content')
-      expect(categoryInput.element.value).toBe('Work')
-      expect(weekInput.element.value).toBe('42')
       expect(favoriteCheckbox.element.checked).toBe(true)
       expect(archivedCheckbox.element.checked).toBe(false)
     })
 
-    it('should display available categories and tags', () => {
+    it('should display available tags', () => {
       wrapper = mount(NotesForm, {
         global: {
           plugins: [pinia],
         },
       })
 
-      const categoryDatalist = wrapper.find('#categories')
       const tagsDatalist = wrapper.find('#tags')
 
-      expect(categoryDatalist.exists()).toBe(true)
       expect(tagsDatalist.exists()).toBe(true)
     })
   })
@@ -213,40 +206,6 @@ describe('NotesForm', () => {
         (el) => el.text() === 'Content must be less than 10,000 characters',
       )
       expect(contentError?.exists()).toBe(true)
-    })
-
-    it('should validate category length', async () => {
-      const categoryInput = wrapper.find('#category')
-      const longCategory = 'a'.repeat(101)
-
-      await categoryInput.setValue(longCategory)
-      await categoryInput.trigger('blur')
-
-      const errorMessages = wrapper.findAll('.error-message')
-      const categoryError = errorMessages.find(
-        (el) => el.text() === 'Category must be less than 100 characters',
-      )
-      expect(categoryError?.exists()).toBe(true)
-    })
-
-    it('should validate week number range', async () => {
-      const weekInput = wrapper.find('#weekNumber')
-
-      // Test negative week number
-      await weekInput.setValue(-1)
-      await weekInput.trigger('blur')
-
-      let errorMessages = wrapper.findAll('.error-message')
-      let weekError = errorMessages.find((el) => el.text() === 'Week number cannot be negative')
-      expect(weekError?.exists()).toBe(true)
-
-      // Test future week number
-      await weekInput.setValue(50)
-      await weekInput.trigger('blur')
-
-      errorMessages = wrapper.findAll('.error-message')
-      weekError = errorMessages.find((el) => el.text() === 'Cannot create notes for future weeks')
-      expect(weekError?.exists()).toBe(true)
     })
 
     it('should validate maximum tags limit', async () => {
@@ -395,8 +354,6 @@ describe('NotesForm', () => {
       // Fill in valid data
       await wrapper.find('#title').setValue('Test Note')
       await wrapper.find('#content').setValue('This is test content for the note')
-      await wrapper.find('#category').setValue('Work')
-      await wrapper.find('#weekNumber').setValue('42')
 
       // Add a tag
       const tagInput = wrapper.find('#tags')
@@ -419,9 +376,7 @@ describe('NotesForm', () => {
       const submitData = submitEvents?.[0]?.[0] as NoteCreate
       expect(submitData.title).toBe('Test Note')
       expect(submitData.content).toBe('This is test content for the note')
-      expect(submitData.category).toBe('Work')
       expect(submitData.tags).toEqual(['important'])
-      expect(submitData.week_number).toBe(42)
       expect(submitData.is_favorite).toBe(true)
       expect(submitData.is_archived).toBe(false)
     })
@@ -451,8 +406,7 @@ describe('NotesForm', () => {
       const expectedData = {
         title: 'New Note',
         content: 'This is new content',
-        category: undefined,
-        tags: undefined,
+        tags: [],
         week_number: undefined,
         is_favorite: false,
         is_archived: false,
@@ -464,7 +418,8 @@ describe('NotesForm', () => {
         // Simulate parent component handling the submit
         const submitData = submitEvents[0][0]
         await mockNotesStore.createNote(submitData)
-        expect(mockNotesStore.createNote).toHaveBeenCalledWithExactlyOnceWith(submitData)
+        expect(mockNotesStore.createNote).toHaveBeenCalledExactlyOnceWith(submitData)
+        expect(mockNotesStore.createNote).toHaveBeenCalledTimes(1)
       }
     })
 
@@ -501,12 +456,13 @@ describe('NotesForm', () => {
         // Simulate parent component handling the submit
         const submitData = submitEvents[0][0]
         await mockNotesStore.updateNote(mockNote.id, submitData)
-        expect(mockNotesStore.updateNote).toHaveBeenCalledWithExactlyOnceWith(
+        expect(mockNotesStore.updateNote).toHaveBeenCalledExactlyOnceWith(
           1,
           expect.objectContaining({
             title: 'Updated Note',
           }),
         )
+        expect(mockNotesStore.updateNote).toHaveBeenCalledTimes(1)
       }
     })
 
@@ -650,9 +606,7 @@ describe('NotesForm', () => {
     it('should associate labels with form controls', () => {
       expect(wrapper.find('label[for="title"]').exists()).toBe(true)
       expect(wrapper.find('label[for="content"]').exists()).toBe(true)
-      expect(wrapper.find('label[for="category"]').exists()).toBe(true)
       expect(wrapper.find('label[for="tags"]').exists()).toBe(true)
-      expect(wrapper.find('label[for="weekNumber"]').exists()).toBe(true)
     })
 
     it('should mark required fields with aria attributes', () => {
@@ -672,10 +626,6 @@ describe('NotesForm', () => {
         el.text().includes('Press Enter or comma to add tags'),
       )
       expect(tagHelperText?.exists()).toBe(true)
-
-      // Week number helper text
-      const weekHelperText = helperTexts.find((el) => el.text().includes('Current week'))
-      expect(weekHelperText?.exists()).toBe(true)
     })
 
     it('should provide aria-label for remove tag buttons', async () => {
@@ -764,7 +714,6 @@ describe('NotesForm', () => {
       })
 
       expect((wrapper.find('#title').element as HTMLInputElement).value).toBe('Minimal Note')
-      expect((wrapper.find('#category').element as HTMLInputElement).value).toBe('')
       expect(wrapper.findAll('.tag-chip')).toHaveLength(0)
     })
   })

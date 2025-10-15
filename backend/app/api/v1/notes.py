@@ -36,6 +36,9 @@ def get_note_service(db: Session = Depends(get_db)) -> NoteService:
 async def create_note(
     note_data: NoteCreate,
     user_id: int = Query(..., description="ID of the note owner"),
+    focused_week: Optional[int] = Query(
+        None, ge=0, description="Week number to use if not specified in note_data"
+    ),
     note_service: NoteService = Depends(get_note_service),
 ):
     """
@@ -44,6 +47,7 @@ async def create_note(
     Args:
         note_data: Note creation data
         user_id: ID of the note owner
+        focused_week: Optional week number to use if not specified in note_data
         note_service: Note service instance
 
     Returns:
@@ -51,13 +55,24 @@ async def create_note(
 
     Raises:
         HTTP 404: If user not found
-        HTTP 422: If validation fails (e.g., future week notes)
+        HTTP 422: If validation fails (e.g., future week notes, missing week_number)
 
     Note:
-        TODO: Replace user_id query parameter with proper JWT/session-based authentication
-        for better security and authorization control.
+        - For users with date_of_birth: week_number must be provided either in note_data
+          or as focused_week parameter
+        - focused_week parameter provides a fallback when frontend doesn't include
+          week_number in the request body
+        - TODO: Replace user_id query parameter with proper JWT/session-based authentication
+          for better security and authorization control.
     """
     try:
+        # If note_data doesn't have week_number but focused_week is provided, use it
+        if note_data.week_number is None and focused_week is not None:
+            # Create a new note_data with the focused_week
+            note_data_dict = note_data.model_dump()
+            note_data_dict["week_number"] = focused_week
+            note_data = NoteCreate(**note_data_dict)
+
         return note_service.create_note(user_id, note_data)
     except NotFoundError as e:
         logger.warning(f"User not found when creating note: {e}")
@@ -117,6 +132,9 @@ async def update_note(
     note_id: int,
     note_data: NoteUpdate,
     user_id: int = Query(..., description="ID of the note owner"),
+    clear_omitted_tags: bool = Query(
+        False, description="Clear tags when tags field is omitted from request"
+    ),
     note_service: NoteService = Depends(get_note_service),
 ):
     """
@@ -126,6 +144,7 @@ async def update_note(
         note_id: Note ID
         note_data: Note update data
         user_id: ID of the note owner
+        clear_omitted_tags: If True, clear tags when tags field is omitted from request body
         note_service: Note service instance
 
     Returns:
@@ -136,11 +155,14 @@ async def update_note(
         HTTP 422: If validation fails (e.g., future week notes)
 
     Note:
+        When clear_omitted_tags=False (default), omitted fields remain unchanged.
+        When clear_omitted_tags=True, omitted tags field will be cleared.
+
         TODO: Replace user_id query parameter with proper JWT/session-based authentication
         for better security and authorization control.
     """
     try:
-        return note_service.update_note(user_id, note_id, note_data)
+        return note_service.update_note(user_id, note_id, note_data, clear_omitted_tags)
     except NotFoundError as e:
         logger.warning(f"Note not found for update: {e}")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -357,31 +379,6 @@ async def get_note_statistics(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error while retrieving note statistics",
-        )
-
-
-@note_router.get("/meta/categories", response_model=List[str])
-async def get_categories(
-    user_id: int = Query(..., description="ID of the note owner"),
-    note_service: NoteService = Depends(get_note_service),
-):
-    """
-    Get all unique categories for a user.
-
-    Args:
-        user_id: ID of the note owner
-        note_service: Note service instance
-
-    Returns:
-        List of unique category names
-    """
-    try:
-        return note_service.get_categories(user_id)
-    except Exception as e:
-        logger.error(f"Unexpected error getting categories: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error while retrieving categories",
         )
 
 

@@ -192,6 +192,13 @@ class NoteService:
         note_dict = note_data.model_dump(exclude_unset=True)
         note_dict.update(text_metadata)
 
+        # Require week_number when user has date_of_birth for week-based organization
+        if user.date_of_birth and note_data.week_number is None:
+            raise ValidationError(
+                "week_number is required for users with date_of_birth set. "
+                "Please specify which week this note belongs to."
+            )
+
         # Set note_date if not provided and week_number is provided
         if (
             note_data.week_number is not None
@@ -240,7 +247,11 @@ class NoteService:
         return NoteResponse.model_validate(note)
 
     def update_note(
-        self, user_id: int, note_id: int, note_data: NoteUpdate
+        self,
+        user_id: int,
+        note_id: int,
+        note_data: NoteUpdate,
+        clear_omitted_tags: bool = False,
     ) -> NoteResponse:
         """
         Update an existing note.
@@ -249,6 +260,7 @@ class NoteService:
             user_id: ID of the note owner
             note_id: Note ID
             note_data: Note update data
+            clear_omitted_tags: If True, clear tags when tags field is omitted from update data
 
         Returns:
             Updated note response
@@ -256,6 +268,10 @@ class NoteService:
         Raises:
             NotFoundError: If note not found
             ValidationError: If validation fails
+
+        Note:
+            When clear_omitted_tags=False (default), omitted fields are not updated.
+            When clear_omitted_tags=True, omitted tags field will be cleared (set to None).
         """
         # Get existing note
         note = self.repository.get_by_id(note_id, user_id)
@@ -273,6 +289,11 @@ class NoteService:
 
         # Track changes for edit history
         update_dict = note_data.model_dump(exclude_unset=True)
+
+        # Handle clearing omitted tags if requested
+        if clear_omitted_tags and "tags" not in update_dict:
+            # Frontend omitted tags field, but wants to clear them
+            update_dict["tags"] = None
 
         # Update text metadata if content changed
         if "content" in update_dict:
@@ -299,7 +320,6 @@ class NoteService:
         trackable_fields = [
             "title",
             "content",
-            "category",
             "tags",
             "week_number",
             "note_date",
@@ -504,18 +524,6 @@ class NoteService:
         """
         stats = self.repository.get_statistics(user_id)
         return NoteStatistics(**stats)
-
-    def get_categories(self, user_id: int) -> List[str]:
-        """
-        Get all unique categories for a user.
-
-        Args:
-            user_id: ID of the note owner
-
-        Returns:
-            List of unique category names
-        """
-        return self.repository.get_categories(user_id)
 
     def get_tags(self, user_id: int) -> List[str]:
         """

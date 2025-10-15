@@ -163,8 +163,17 @@ export const userApi = {
 // Notes API
 export const notesApi = {
   // Create note
-  createNote: (userId: number, noteData: NoteCreate): Promise<NoteResponse> =>
-    apiPost<NoteResponse>(`${API_V1_BASE}/notes/?user_id=${userId}`, noteData),
+  createNote: (
+    userId: number,
+    noteData: NoteCreate,
+    focusedWeek?: number,
+  ): Promise<NoteResponse> => {
+    const url =
+      focusedWeek !== undefined
+        ? `${API_V1_BASE}/notes/?user_id=${userId}&focused_week=${focusedWeek}`
+        : `${API_V1_BASE}/notes/?user_id=${userId}`
+    return apiPost<NoteResponse>(url, noteData)
+  },
 
   // Get note by ID
   getNote: (noteId: number, userId: number): Promise<NoteResponse> =>
@@ -199,10 +208,6 @@ export const notesApi = {
   // Get note statistics
   getNoteStatistics: (userId: number): Promise<NoteStatistics> =>
     apiGet<NoteStatistics>(`${API_V1_BASE}/notes/stats/summary`, { user_id: userId }),
-
-  // Get available categories
-  getCategories: (userId: number): Promise<string[]> =>
-    apiGet<string[]>(`${API_V1_BASE}/notes/meta/categories`, { user_id: userId }),
 
   // Get available tags
   getTags: (userId: number): Promise<string[]> =>

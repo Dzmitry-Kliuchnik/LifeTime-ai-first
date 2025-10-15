@@ -172,22 +172,6 @@
     <transition name="advanced-filters" appear>
       <div v-if="showAdvancedFilters" class="advanced-filters">
         <div class="filters-grid">
-          <!-- Category Filter -->
-          <div class="filter-group">
-            <label for="category-filter" class="filter-label">Category</label>
-            <select
-              id="category-filter"
-              v-model="searchFilters.category"
-              class="filter-select"
-              @change="handleFilterChange"
-            >
-              <option value="">All Categories</option>
-              <option v-for="category in availableCategories" :key="category" :value="category">
-                {{ category }}
-              </option>
-            </select>
-          </div>
-
           <!-- Tags Filter -->
           <div class="filter-group">
             <label for="tags-filter" class="filter-label">Tags</label>
@@ -296,69 +280,6 @@
       </div>
     </transition>
 
-    <!-- Active Filters Summary -->
-    <div v-if="hasActiveFilters" class="active-filters">
-      <span class="active-filters-label">Active filters:</span>
-      <div class="active-filter-tags">
-        <span
-          v-if="searchFilters.query"
-          class="active-filter-tag"
-          data-testid="active-filter-query"
-        >
-          Search: "{{ searchFilters.query }}"
-          <button type="button" @click="clearFilter('query')" class="remove-filter">×</button>
-        </span>
-        <span
-          v-if="searchFilters.category"
-          class="active-filter-tag"
-          data-testid="active-filter-category"
-        >
-          Category: {{ searchFilters.category }}
-          <button type="button" @click="clearFilter('category')" class="remove-filter">×</button>
-        </span>
-        <span
-          v-if="selectedTags.length > 0"
-          class="active-filter-tag"
-          data-testid="active-filter-tags"
-        >
-          Tags: {{ selectedTags.join(', ') }}
-          <button type="button" @click="clearFilter('tags')" class="remove-filter">×</button>
-        </span>
-        <span
-          v-if="searchFilters.is_favorite === true"
-          class="active-filter-tag"
-          data-testid="active-filter-favorite"
-        >
-          Favorites only
-          <button type="button" @click="clearFilter('is_favorite')" class="remove-filter">×</button>
-        </span>
-        <span
-          v-if="searchFilters.is_archived === true"
-          class="active-filter-tag"
-          data-testid="active-filter-archived"
-        >
-          Archived only
-          <button type="button" @click="clearFilter('is_archived')" class="remove-filter">×</button>
-        </span>
-        <span
-          v-if="searchFilters.is_archived === false"
-          class="active-filter-tag"
-          data-testid="active-filter-active-only"
-        >
-          Active only
-          <button type="button" @click="clearFilter('is_archived')" class="remove-filter">×</button>
-        </span>
-        <span v-if="searchFilters.start_date || searchFilters.end_date" class="active-filter-tag">
-          Date: {{ formatDateRange() }}
-          <button type="button" @click="clearDateRange()" class="remove-filter">×</button>
-        </span>
-        <span v-if="searchFilters.week_number !== undefined" class="active-filter-tag">
-          Week: {{ searchFilters.week_number }}
-          <button type="button" @click="clearFilter('week_number')" class="remove-filter">×</button>
-        </span>
-      </div>
-    </div>
-
     <!-- Search Error -->
     <div v-if="searchError" class="search-error">
       <div class="error-icon">
@@ -391,7 +312,6 @@ import { ref, computed, watch, onMounted } from 'vue'
 import type { NoteSearchRequest, NoteListResponse } from '@/types'
 
 interface Props {
-  availableCategories?: string[]
   availableTags?: string[]
   maxWeekNumber?: number
   searchResults?: NoteListResponse | null
@@ -411,7 +331,6 @@ interface Emits {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  availableCategories: () => [],
   availableTags: () => [],
   maxWeekNumber: 5000,
   searchResults: null,
@@ -438,7 +357,6 @@ let searchTimeout: ReturnType<typeof setTimeout> | null = null
 // Search filters
 const searchFilters = ref<NoteSearchRequest>({
   query: '',
-  category: '',
   tags: [],
   week_number: undefined,
   is_favorite: undefined,
@@ -453,7 +371,6 @@ const selectedTags = computed(() => searchFilters.value.tags || [])
 const hasActiveFilters = computed(() => {
   return (
     searchFilters.value.query ||
-    searchFilters.value.category ||
     (searchFilters.value.tags && searchFilters.value.tags.length > 0) ||
     searchFilters.value.is_favorite !== undefined ||
     searchFilters.value.is_archived !== undefined ||
@@ -492,9 +409,6 @@ const performSearch = () => {
   if (searchFilters.value.query?.trim()) {
     cleanFilters.query = searchFilters.value.query.trim()
   }
-  if (searchFilters.value.category?.trim()) {
-    cleanFilters.category = searchFilters.value.category.trim()
-  }
   if (searchFilters.value.tags && searchFilters.value.tags.length > 0) {
     cleanFilters.tags = searchFilters.value.tags
   }
@@ -520,7 +434,6 @@ const performSearch = () => {
 const clearSearch = () => {
   searchFilters.value = {
     query: '',
-    category: '',
     tags: [],
     week_number: undefined,
     is_favorite: undefined,
@@ -540,12 +453,7 @@ const clearAllFilters = () => {
 const clearFilter = (filterKey: keyof NoteSearchRequest) => {
   if (filterKey === 'tags') {
     searchFilters.value.tags = []
-  } else if (
-    filterKey === 'query' ||
-    filterKey === 'category' ||
-    filterKey === 'start_date' ||
-    filterKey === 'end_date'
-  ) {
+  } else if (filterKey === 'query' || filterKey === 'start_date' || filterKey === 'end_date') {
     ;(searchFilters.value[filterKey] as string) = ''
   } else {
     searchFilters.value[filterKey] = undefined
@@ -639,7 +547,7 @@ watch(
 </script>
 
 <style scoped>
-/* CSS Variables */
+/* CSS Variables - Simplified and consolidated */
 :root {
   --search-bg: #ffffff;
   --search-border: #e2e8f0;
@@ -650,7 +558,7 @@ watch(
   --search-hover: #f7fafc;
   --search-active: #bee3f8;
   --search-error: #e53e3e;
-  --search-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --search-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   --search-border-radius: 0.5rem;
   --search-transition: all 0.2s ease;
 }
@@ -993,61 +901,6 @@ watch(
   border-top: 1px solid var(--search-border);
 }
 
-/* Active Filters */
-.active-filters {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1rem;
-  background-color: var(--search-hover);
-  border-radius: 0.375rem;
-  border: 1px solid var(--search-border);
-}
-
-.active-filters-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--search-text-primary);
-}
-
-.active-filter-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.active-filter-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.75rem;
-  background-color: var(--search-primary);
-  color: white;
-  border-radius: 1rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.remove-filter {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  border: none;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 1rem;
-  line-height: 1;
-  transition: var(--search-transition);
-}
-
-.remove-filter:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
 /* Search Error */
 .search-error {
   display: flex;
@@ -1070,7 +923,7 @@ watch(
   font-weight: 500;
 }
 
-/* Loading Spinner */
+/* Loading Spinner - Simplified */
 .loading-spinner {
   width: 1.25rem;
   height: 1.25rem;
@@ -1091,13 +944,14 @@ watch(
   }
 }
 
-/* Buttons */
+/* Buttons - Consolidated */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
+  border: none;
   border-radius: 0.375rem;
   font-size: 0.875rem;
   font-weight: 500;
@@ -1114,6 +968,7 @@ watch(
 
 .btn-primary {
   background-color: var(--search-primary);
+  border: 1px solid;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -1122,6 +977,8 @@ watch(
 
 .btn-secondary {
   background-color: var(--search-hover);
+  color: var(--search-text-primary);
+  border: 1px solid;
 }
 
 .btn-secondary:hover:not(:disabled) {
@@ -1169,10 +1026,6 @@ watch(
   .filter-actions {
     flex-direction: column-reverse;
   }
-
-  .active-filters {
-    padding: 0.75rem;
-  }
 }
 
 @media (max-width: 480px) {
@@ -1193,19 +1046,9 @@ watch(
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .advanced-filters-enter-active,
-  .advanced-filters-leave-active,
-  .search-input,
-  .filter-input,
-  .filter-select,
-  .btn,
-  .quick-filter-button,
-  .advanced-toggle-button {
-    transition: none;
-  }
-
-  .loading-spinner {
-    animation: none;
+  * {
+    transition: none !important;
+    animation: none !important;
   }
 }
 </style>

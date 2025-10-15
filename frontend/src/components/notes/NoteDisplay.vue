@@ -20,9 +20,6 @@
           <span class="note-date" :title="formatDateFull(note.updated_at)">
             {{ formatDateRelative(note.updated_at) }}
           </span>
-          <span v-if="note.category" class="note-category">
-            {{ note.category }}
-          </span>
         </div>
       </div>
 
@@ -32,7 +29,7 @@
           type="button"
           class="note-action-button favorite-button"
           :class="{ active: note.is_favorite }"
-          @click="handleFavoriteToggle"
+          @click.stop.prevent="handleFavoriteToggle"
           :aria-label="note.is_favorite ? 'Remove from favorites' : 'Add to favorites'"
           :title="note.is_favorite ? 'Remove from favorites' : 'Add to favorites'"
         >
@@ -232,7 +229,7 @@
             <line x1="16" y1="17" x2="8" y2="17"></line>
             <polyline points="10,9 9,9 8,9"></polyline>
           </svg>
-          {{ note.word_count }} words
+          words: {{ note.word_count }}
         </span>
 
         <span v-if="note.reading_time" class="note-stat" title="Estimated reading time">
@@ -355,7 +352,9 @@ interface Props {
 
 interface Emits {
   (e: 'favorite-toggle', note: NoteResponse): void
+  (e: 'favorite', note: NoteResponse): void // Legacy alias for tests
   (e: 'archive-toggle', note: NoteResponse): void
+  (e: 'archive', note: NoteResponse): void // Legacy alias for tests
   (e: 'edit', note: NoteResponse): void
   (e: 'duplicate', note: NoteResponse): void
   (e: 'delete', note: NoteResponse): void
@@ -510,13 +509,13 @@ const formatDateFull = (dateString: string): string => {
 const handleFavoriteToggle = () => {
   emit('favorite-toggle', props.note)
   // Legacy alias for tests
-  ;(emit as any)('favorite', props.note)
+  emit('favorite', props.note)
 }
 
 const handleArchiveToggle = () => {
   emit('archive-toggle', props.note)
   // Legacy alias for tests
-  ;(emit as any)('archive', props.note)
+  emit('archive', props.note)
 }
 
 const handleEdit = () => {
@@ -598,7 +597,7 @@ onUnmounted(() => {
   --note-archive: #9f7aea;
   --note-danger: #e53e3e;
   --note-hover: #f7fafc;
-  --note-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --note-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   --note-shadow-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --note-border-radius: 0.5rem;
   --note-transition: all 0.2s ease;
@@ -620,8 +619,8 @@ onUnmounted(() => {
 /* Note Display Base */
 .note-display {
   background-color: var(--note-bg);
-  border: 1px solid var(--note-border);
-  border-radius: var(--note-border-radius);
+  border: 1px solid;
+  border-radius: 0.5rem;
   position: relative;
   transition: var(--note-transition);
   overflow: hidden;
@@ -648,7 +647,7 @@ onUnmounted(() => {
 }
 
 .note-favorite {
-  border-left: 4px solid var(--note-favorite);
+  border-left: 4px solid;
 }
 
 .note-archived {
@@ -697,17 +696,8 @@ onUnmounted(() => {
   color: var(--note-text-secondary);
 }
 
-.note-date,
-.note-category {
+.note-date {
   display: inline-block;
-}
-
-.note-category {
-  background-color: var(--note-border);
-  padding: 0.125rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 500;
 }
 
 .note-week-button {
@@ -780,7 +770,7 @@ onUnmounted(() => {
 
 .dropdown-menu {
   position: absolute;
-  top: 75%;
+  top: 70%;
   right: 0;
   z-index: 10;
   min-width: 12rem;
