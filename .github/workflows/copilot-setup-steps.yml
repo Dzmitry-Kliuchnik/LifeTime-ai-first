@@ -1,0 +1,60 @@
+name: "Copilot Setup Steps"
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  # The job MUST be called `copilot-setup-steps` or it will not be picked up by Copilot.
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Backend Python setup
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install Python dependencies
+        working-directory: backend
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run Python linter
+        working-directory: backend
+        run: |
+          pip install flake8
+          flake8 app/ || echo "Linting issues found (not blocking)"
+      - name: Run Python tests
+        working-directory: backend
+        run: |
+          pip install pytest
+          pytest || echo "Some tests failed (not blocking)"
+      
+      # Frontend Node.js setup  
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install Node.js dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Run frontend linter
+        working-directory: frontend
+        run: npm run lint || echo "Linting issues found (not blocking)"
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm test || echo "Some tests failed (not blocking)"
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
