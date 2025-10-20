@@ -609,11 +609,8 @@ const handleFormError = (error: string) => {
 }
 
 const handleFavoriteToggle = async (note: NoteResponse) => {
-  console.log('🚀 DIRECT API CALL - Starting favorite toggle for note:', note.id)
-
   // Prevent duplicate execution
   if (loadingNoteIds.value.includes(note.id)) {
-    console.log('Note', note.id, 'is already being processed, skipping duplicate call')
     return
   }
 
@@ -627,8 +624,6 @@ const handleFavoriteToggle = async (note: NoteResponse) => {
       showNotification('error', 'Error', 'User not authenticated')
       return
     }
-
-    console.log('🌐 Making direct API call...')
 
     // Direct API call bypassing the store
     const response = await fetch(
@@ -642,18 +637,14 @@ const handleFavoriteToggle = async (note: NoteResponse) => {
       },
     )
 
-    console.log('📡 API Response status:', response.status)
-
     if (response.ok) {
-      const updatedNote = await response.json()
-      console.log('✅ API call successful, updated note:', updatedNote)
+      await response.json()
 
       const action = note.is_favorite ? 'removed from' : 'added to'
       showNotification('success', 'Favorites Updated', `Note ${action} favorites.`)
       refreshNotes()
     } else {
       const errorData = await response.json()
-      console.error('❌ API call failed:', response.status, errorData)
       showNotification(
         'error',
         'Error',
@@ -661,7 +652,6 @@ const handleFavoriteToggle = async (note: NoteResponse) => {
       )
     }
   } catch (error) {
-    console.error('💥 Network error during favorite toggle:', error)
     showNotification(
       'error',
       'Error',
@@ -673,11 +663,8 @@ const handleFavoriteToggle = async (note: NoteResponse) => {
 }
 
 const handleArchiveToggle = async (note: NoteResponse) => {
-  console.log('📁 DIRECT API CALL - Starting archive toggle for note:', note.id)
-
   // Prevent duplicate execution
   if (loadingNoteIds.value.includes(note.id)) {
-    console.log('Note', note.id, 'is already being processed, skipping duplicate call')
     return
   }
 
@@ -692,8 +679,6 @@ const handleArchiveToggle = async (note: NoteResponse) => {
       return
     }
 
-    console.log('🌐 Making direct API call to toggle archive...')
-
     // Direct API call bypassing the store
     const response = await fetch(
       `http://localhost:8000/api/v1/notes/${note.id}?user_id=${userId}`,
@@ -706,18 +691,14 @@ const handleArchiveToggle = async (note: NoteResponse) => {
       },
     )
 
-    console.log('📡 API Response status:', response.status)
-
     if (response.ok) {
-      const updatedNote = await response.json()
-      console.log('✅ API call successful, updated note:', updatedNote)
+      await response.json()
 
       const action = note.is_archived ? 'unarchived' : 'archived'
       showNotification('success', 'Archive Updated', `Note ${action} successfully.`)
       refreshNotes()
     } else {
       const errorData = await response.json()
-      console.error('❌ API call failed:', response.status, errorData)
       showNotification(
         'error',
         'Error',
@@ -725,7 +706,6 @@ const handleArchiveToggle = async (note: NoteResponse) => {
       )
     }
   } catch (error) {
-    console.error('💥 Network error during archive toggle:', error)
     showNotification(
       'error',
       'Error',

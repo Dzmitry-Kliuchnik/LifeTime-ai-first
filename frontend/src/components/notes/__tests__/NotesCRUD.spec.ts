@@ -513,7 +513,7 @@ describe('Notes CRUD Operations', () => {
       noteDisplay.vm.$emit('delete', mockNote)
       await nextTick()
 
-      expect(mockNotesStore.deleteNote).toHaveBeenCalledWith(mockNote.id)
+      expect(mockNotesStore.deleteNote).toHaveBeenCalledWithExactlyOnceWith(mockNote.id)
     })
 
     it('should handle note deletion errors', async () => {
@@ -526,7 +526,7 @@ describe('Notes CRUD Operations', () => {
       noteDisplay.vm.$emit('delete', mockNote)
       await nextTick()
 
-      expect(mockNotesStore.deleteNote).toHaveBeenCalledWith(mockNote.id)
+      expect(mockNotesStore.deleteNote).toHaveBeenCalledWithExactlyOnceWith(mockNote.id)
       expect(wrapper.find('.error-notification').exists()).toBe(true)
     })
 
@@ -754,7 +754,7 @@ describe('Notes CRUD Operations', () => {
       await nextTick()
 
       // Should maintain search query in subsequent fetches
-      expect(mockNotesStore.searchNotes).toHaveBeenCalledWith(
+      expect(mockNotesStore.searchNotes).toHaveBeenCalledWithExactlyOnceWith(
         expect.objectContaining({ query: searchQuery }),
       )
     })

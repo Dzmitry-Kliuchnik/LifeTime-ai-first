@@ -7,8 +7,14 @@
       'note-compact': variant === 'compact',
       'note-expanded': variant === 'expanded',
       'note-card': variant === 'card',
+      'clickable-note': clickableCard,
     }"
     :aria-labelledby="`note-title-${note.id}`"
+    :aria-label="clickableCard ? `Click to edit note: ${note.title}` : undefined"
+    @click="handleCardClick"
+    @keydown.enter.prevent="clickableCard ? handleCardClick : undefined"
+    @keydown.space.prevent="clickableCard ? handleCardClick : undefined"
+    :tabindex="clickableCard ? 0 : undefined"
   >
     <!-- Note Header -->
     <header class="note-header">
@@ -348,6 +354,7 @@ interface Props {
   isLoading?: boolean
   clickableExpand?: boolean
   clickableTags?: boolean
+  clickableCard?: boolean
 }
 
 interface Emits {
@@ -377,6 +384,7 @@ const props = withDefaults(defineProps<Props>(), {
   isLoading: false,
   clickableExpand: true,
   clickableTags: true,
+  clickableCard: true,
 })
 
 const emit = defineEmits<Emits>()
@@ -544,6 +552,38 @@ const handleTagClick = (tag: string) => {
   }
 }
 
+const handleCardClick = (event: Event) => {
+  // Only handle clicks if the card is clickable
+  if (!props.clickableCard) {
+    return
+  }
+  
+  // Prevent card click when clicking on interactive elements
+  const target = event.target as HTMLElement
+  
+  // Check if the click was on a button, input, or other interactive element that should be excluded
+  if ((target.closest && target.closest('button')) || 
+      (target.closest && target.closest('input')) || 
+      (target.closest && target.closest('select')) || 
+      (target.closest && target.closest('textarea')) ||
+      (target.closest && target.closest('a')) ||
+      (target.closest && target.closest('.dropdown')) ||
+      (target.closest && target.closest('.dropdown-menu')) ||
+      (target.closest && target.closest('.note-action-button')) ||
+      (target.closest && target.closest('.note-tag')) ||
+      (target.closest && target.closest('.note-week-button'))) {
+    return
+  }
+  
+  // Prevent default behavior for keyboard events
+  if (event.type === 'keydown') {
+    event.preventDefault()
+  }
+  
+  // Emit edit event to open the note for editing
+  emit('edit', props.note)
+}
+
 const handleExpand = () => {
   if (props.clickableExpand && isTruncated.value) {
     isExpanded.value = true
@@ -634,6 +674,29 @@ onUnmounted(() => {
 .note-card:hover {
   box-shadow: var(--note-shadow-hover);
   transform: translateY(-1px);
+}
+
+/* Clickable note styles */
+.clickable-note {
+  cursor: pointer;
+}
+
+.clickable-note:hover {
+  border-color: var(--note-link);
+}
+
+.clickable-note:focus {
+  outline: 2px solid var(--note-link);
+  outline-offset: 2px;
+}
+
+.clickable-note:focus-visible {
+  outline: 2px solid var(--note-link);
+  outline-offset: 2px;
+}
+
+.clickable-note:active {
+  transform: scale(0.98);
 }
 
 .note-compact {

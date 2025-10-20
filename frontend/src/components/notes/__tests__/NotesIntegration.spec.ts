@@ -345,7 +345,7 @@ describe('Notes Interface Integration Tests', () => {
       await nextTick()
 
       // 4. Verify combined search (tags may be applied internally)
-      expect(mockNotesStore.searchNotes).toHaveBeenCalledWith(
+      expect(mockNotesStore.searchNotes).toHaveBeenCalledWithExactlyOnceWith(
         expect.objectContaining({ query: 'first' }),
       )
 
@@ -425,7 +425,7 @@ describe('Notes Interface Integration Tests', () => {
       await nextTick()
 
       // 2. Verify sort options are set and notes are fetched (actual implementation uses field/direction)
-      expect(mockNotesStore.setSortOptions).toHaveBeenCalledWith(
+      expect(mockNotesStore.setSortOptions).toHaveBeenCalledWithExactlyOnceWith(
         expect.objectContaining({
           sortBy: 'title',
           sortOrder: 'asc',
@@ -438,7 +438,7 @@ describe('Notes Interface Integration Tests', () => {
       await nextTick()
 
       // 4. Verify fetchNotes was called with pagination parameters
-      expect(mockNotesStore.fetchNotes).toHaveBeenCalledWith(
+      expect(mockNotesStore.fetchNotes).toHaveBeenCalledWithExactlyOnceWith(
         expect.objectContaining({
           page: 3,
         }),
